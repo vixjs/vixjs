@@ -153,10 +153,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p $RELEASE_TAG
-          cp ./bin/$DIST_DIR/fibjs.exe ./$RELEASE_TAG/fibjs-$RELEASE_TAG-windows-$DIST_ARCH.exe
-          cp ./bin/$DIST_DIR/fibjs_gui.exe ./$RELEASE_TAG/fibjs-$RELEASE_TAG-windows-gui-$DIST_ARCH.exe
+          cp ./bin/$DIST_DIR/vixjs.exe ./$RELEASE_TAG/vixjs-$RELEASE_TAG-windows-$DIST_ARCH.exe
+          cp ./bin/$DIST_DIR/vixjs_gui.exe ./$RELEASE_TAG/vixjs-$RELEASE_TAG-windows-gui-$DIST_ARCH.exe
           cp ./bin/$DIST_DIR/installer.exe ./$RELEASE_TAG/installer-$RELEASE_TAG-windows-$DIST_ARCH.exe
-          cp ./bin/$DIST_DIR/fibjs.cab ./$RELEASE_TAG/fibjs-$RELEASE_TAG-windows-$DIST_ARCH.cab
+          cp ./bin/$DIST_DIR/vixjs.cab ./$RELEASE_TAG/vixjs-$RELEASE_TAG-windows-$DIST_ARCH.cab
         env:
           DIST_ARCH: ${{ steps.set-env-vars.outputs.DIST_ARCH }}
           DIST_DIR: ${{ steps.set-env-vars.outputs.DIST_DIR }}

@@ -12,15 +12,15 @@ if(NOT "${CLEAN_BUILD}" STREQUAL "true")
 
     if(${BUILD_TYPE} STREQUAL "release")
         if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
-            execute_process(WORKING_DIRECTORY ${BIN_PATH} COMMAND fibjs ${CMAKE_CURRENT_SOURCE_DIR}/gen_install.js)
+            execute_process(WORKING_DIRECTORY ${BIN_PATH} COMMAND vixjs ${CMAKE_CURRENT_SOURCE_DIR}/gen_install.js)
             set(OUT_PATH "${WORK_ROOT}/out/${CMAKE_HOST_SYSTEM_NAME}_${BUILD_ARCH}_${BUILD_TYPE}")
             build("${CMAKE_CURRENT_SOURCE_DIR}" "${OUT_PATH}/installer")
         else()
-            execute_process(WORKING_DIRECTORY ${BIN_PATH} COMMAND ${CMAKE_COMMAND} -E tar -zcf fibjs.tar.gz fibjs)
-            message("[100%] Built target fibjs.tar.gz")
+            execute_process(WORKING_DIRECTORY ${BIN_PATH} COMMAND ${CMAKE_COMMAND} -E tar -zcf vixjs.tar.gz vixjs)
+            message("[100%] Built target vixjs.tar.gz")
 
             execute_process(OUTPUT_FILE ${BIN_PATH}/installer.sh
-                COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/src/installer.txt ${BIN_PATH}/fibjs.tar.gz)
+                COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/src/installer.txt ${BIN_PATH}/vixjs.tar.gz)
             execute_process(COMMAND chmod 777 ${BIN_PATH}/installer.sh)
             message("[100%] Built target install.sh")
 
@@ -41,14 +41,14 @@ if(NOT "${CLEAN_BUILD}" STREQUAL "true")
 
                 message("")
                 message("==== GLIBC ====")
-                execute_process(COMMAND ${BUILD_PREFIX}objdump ${BIN_PATH}/fibjs -p COMMAND grep GLIBCX*_[0-9.]* -o COMMAND sort COMMAND uniq)
+                execute_process(COMMAND ${BUILD_PREFIX}objdump ${BIN_PATH}/vixjs -p COMMAND grep GLIBCX*_[0-9.]* -o COMMAND sort COMMAND uniq)
             endif()
 
             message("ENV:CI is $ENV{CI}")
             if(NOT "$ENV{CI}" STREQUAL "")
-                execute_process(OUTPUT_FILE ${BIN_PATH}/fibjs.xz
-                    COMMAND xz -cz -T2 ${BIN_PATH}/fibjs)
-                message("[100%] Built target fibjs.xz")
+                execute_process(OUTPUT_FILE ${BIN_PATH}/vixjs.xz
+                    COMMAND xz -cz -T2 ${BIN_PATH}/vixjs)
+                message("[100%] Built target vixjs.xz")
             endif()
         endif()
     endif()
