@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 
-set(name "fibjs")
+set(name "vixjs")
 project(${name})
 
 include(../vender/tools/option.cmake)
