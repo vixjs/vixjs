@@ -180,7 +180,7 @@ result_t object_base::_emit(exlib::string ev, Variant* args, int32_t argCount)
 {
     Isolate* isolate = get_holder();
     if (isolate)
-        syncCall(isolate, jsTrigger::jsEmit, new jsTrigger(this, ev, args, argCount));
+        requestIsolateRun(isolate, jsTrigger::jsEmit, new jsTrigger(this, ev, args, argCount));
 
     return 0;
 }

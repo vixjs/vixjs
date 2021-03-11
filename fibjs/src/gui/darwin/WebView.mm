@@ -225,7 +225,7 @@ void WebView::onWKWebViewExternalLogMessage(WKScriptMessage* message)
     const char* externalLogMsg = (const char*)([[message body] UTF8String]);
     exlib::string payload(externalLogMsg);
 
-    syncCall(holder(), asyncOutputMessageFromWKWebview, payload);
+    requestIsolateRun(holder(), asyncOutputMessageFromWKWebview, payload);
 }
 
 extern const wchar_t* g_console_js;

@@ -33,7 +33,7 @@ result_t Worker_base::_new(exlib::string path, v8::Local<v8::Object> opts,
 
 void Worker::start()
 {
-    syncCall(m_isolate, worker_fiber, this);
+    requestIsolateRun(m_isolate, worker_fiber, this);
 }
 
 void Worker::_main()

@@ -269,7 +269,7 @@ static void WINAPI service_main(DWORD dwArgc, LPWSTR* lpszArgv)
     s_hSStat = RegisterServiceCtrlHandlerW(s_dispatchTable[0].lpServiceName, service_ctrl);
     if (s_hSStat) {
         Service* srv = s_srv;
-        syncCall(s_isolate, service_worker, srv);
+        requestIsolateRun(s_isolate, service_worker, srv);
         ReportStatusToSCMgr(SERVICE_RUNNING, NO_ERROR, 0);
     }
 }

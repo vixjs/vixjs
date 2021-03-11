@@ -439,7 +439,7 @@ public:
     virtual void Unref()
     {
         if (internalUnref() == 0)
-            syncCall(m_isolate, _release, this);
+            requestIsolateRun(m_isolate, _release, this);
     }
 
 private:

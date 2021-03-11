@@ -331,14 +331,25 @@ private:
     T1 m_v;
 };
 
+/**
+ * post one function to global task queue with 'mode', there're 3 types task queue:
+ * 
+ * - NOSYNC: for asynchronous operation
+ * - LONGSYNC: for asynchronous long-time operation, generally caller want to wait the result
+ * - GUI: for asynchronous action dispatched to gui thread
+ * 
+ */
 template <typename T, typename T1>
 void asyncCall(T func, T1 v, int32_t mode = CALL_E_NOSYNC)
 {
     (new AsyncFunc<T, T1>(func, v))->async(mode);
 }
 
+/**
+ * post one function to isolate's job queue, wait to be executed in one thread
+ */
 template <typename T, typename T1>
-void syncCall(Isolate* isolate, T func, T1 v)
+void requestIsolateRun(Isolate* isolate, T func, T1 v)
 {
     (new AsyncFunc<T, T1>(func, v))->sync(isolate);
 }
@@ -401,7 +412,7 @@ public:
             m_error = Runtime::errMessage();
 
         m_v = v;
-        syncCall(m_isolate, syncFunc, this);
+        requestIsolateRun(m_isolate, syncFunc, this);
 
         return 0;
     }

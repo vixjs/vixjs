@@ -80,7 +80,7 @@ private:
         m_caller = JSFiber::current();
 
         for (i = 0; i < m_fibers; i++)
-            syncCall(m_isolate, worker, this);
+            requestIsolateRun(m_isolate, worker, this);
 
         m_event->wait();
 

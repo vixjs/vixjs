@@ -154,7 +154,7 @@ public:
         if (m_hr)
             isolate->RequestInterrupt(_InterruptCallback, this);
         else
-            syncCall(isolate, _callback, this);
+            requestIsolateRun(isolate, _callback, this);
     }
 
     static void _InterruptCallback(v8::Isolate* isolate, void* data)

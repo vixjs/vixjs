@@ -110,7 +110,7 @@ void JSFiber::start()
 {
     Ref();
     set_caller(JSFiber::current());
-    syncCall(holder(), sync_invoke, this);
+    requestIsolateRun(holder(), sync_invoke, this);
 }
 
 result_t JSFiber::join()

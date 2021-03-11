@@ -30,7 +30,7 @@ public:
 
     ~HeapSnapshotProxy()
     {
-        syncCall(holder(), del_, m_snapshot);
+        requestIsolateRun(holder(), del_, m_snapshot);
     }
 
 public:

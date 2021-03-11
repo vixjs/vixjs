@@ -90,7 +90,7 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
         {
             EntryThread* th = (EntryThread*)p;
             Isolate* isolate = new Isolate(th->m_fibjsEntry);
-            syncCall(isolate, th->m_jsFiber, isolate);
+            requestIsolateRun(isolate, th->m_jsFiber, isolate);
         }
 
         virtual void Run()
@@ -398,7 +398,7 @@ void Isolate::Unref(int32_t hr)
     if (s_iso_ref.dec() == 0) {
         Isolate* isolate = s_isolates.head();
         isolate->m_hr = hr;
-        syncCall(isolate, syncExit, isolate);
+        requestIsolateRun(isolate, syncExit, isolate);
     }
 }
 
@@ -424,7 +424,7 @@ void Isolate::RequestInterrupt(v8::InterruptCallback callback, void* data)
 {
     m_isolate->RequestInterrupt(callback, data);
     if (m_has_timer.CompareAndSwap(0, 1) == 0)
-        syncCall(this, js_timer, this);
+        requestIsolateRun(this, js_timer, this);
 }
 
 } /* namespace fibjs */
