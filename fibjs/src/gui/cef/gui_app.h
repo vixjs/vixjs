@@ -127,7 +127,7 @@ public:
 
 public:
     void load_cef();
-    void run_gui(int argc, char* argv[]);
+    void runGuiThread(int argc, char* argv[]);
     void gui_flush();
     result_t open(exlib::string url, v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal);
     result_t config(v8::Local<v8::Object> opt);

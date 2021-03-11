@@ -85,7 +85,7 @@ GuiApp* g_app;
 
 void MacRunMessageLoop(const CefMainArgs& args, const CefSettings& settings, CefRefPtr<CefApp> application);
 
-void GuiApp::run_gui(int argc, char* argv[])
+void GuiApp::runGuiThread(int argc, char* argv[])
 {
     AddRef();
 
@@ -147,10 +147,10 @@ void GuiApp::run_gui(int argc, char* argv[])
     th.suspend();
 }
 
-void run_gui(int argc, char* argv[])
+void runGuiThread(int argc, char* argv[])
 {
     g_app = new GuiApp(argc, argv);
-    g_app->run_gui(argc, argv);
+    g_app->runGuiThread(argc, argv);
 }
 
 static result_t async_flush(int32_t w)

@@ -1,11 +1,12 @@
-/*
- * fibjs.cpp
- *
- *  Created on: May 28, 2012
- *      Author: lion
+/**
+ * @author richardo2016@gmail.com
+ * @email richardo2016
+ * @create date 2021-03-11 14:55:43
+ * @modify date 2021-03-11 14:55:43
+ * @desc rename from 'fibjs.cpp'
  */
 
-#include "fibjs.h"
+#include "vixjs.h"
 #include "object.h"
 
 namespace fibjs {
@@ -70,8 +71,8 @@ void main(int32_t argc, char** argv)
 {
     importModule();
 
-    start(argc, argv, FiberProcJsEntry);
-    run_gui(argc, argv);
+    startJavascriptApp(argc, argv, FiberProcJsEntry);
+    runGuiThread(argc, argv);
 }
 }
 

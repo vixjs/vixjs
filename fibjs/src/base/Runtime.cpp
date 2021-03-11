@@ -72,7 +72,7 @@ static void createBasisForFiberLoop(v8::Platform* (*get_platform)())
     v8::V8::Initialize();
 }
 
-void start(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isolate*), v8::Platform* (*get_platform)())
+void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isolate*), v8::Platform* (*get_platform)())
 {
     class EntryThread : public exlib::OSThread {
     public:

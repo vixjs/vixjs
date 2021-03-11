@@ -1,11 +1,12 @@
-/*
- * fibjs_main.cpp
- *
- *  Created on: May 28, 2018
- *      Author: lion
+/**
+ * @author richardo2016@gmail.com
+ * @email richardo2016
+ * @create date 2021-03-11 14:54:53
+ * @modify date 2021-03-11 14:54:53
+ * @desc rename from 'fibjs_main.cpp'
  */
 
-#include "fibjs.h"
+#include "vixjs.h"
 #include "ifs/global.h"
 #include "SandBox.h"
 #include "Fiber.h"
