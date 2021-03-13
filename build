@@ -28,6 +28,12 @@ else
 	inform
 fi
 
+cd "${SOURCE_ROOT}/deps"
+sh build "$@"
+if [ $? != 0 ]; then
+	exit 1
+fi
+
 cd "${SOURCE_ROOT}/fibjs"
 sh build "$@"
 if [ $? != 0 ]; then
