@@ -61,6 +61,7 @@ void importModule()
     IMPORT_MODULE(xml);
     IMPORT_MODULE(zip);
     IMPORT_MODULE(zlib);
+    IMPORT_MODULE(alicloud);
 
 #ifdef _WIN32
     IMPORT_MODULE(registry);

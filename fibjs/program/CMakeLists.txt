@@ -37,6 +37,9 @@ else()
 	list(APPEND libs ev editline jemalloc)
 endif()
 
+set(deps aliyun-oss)
+
+list(APPEND libs ${deps})
 foreach(lib ${libs})
 	target_link_libraries(${name} "${EXECUTABLE_OUTPUT_PATH}/${CMAKE_STATIC_LIBRARY_PREFIX}${lib}${CMAKE_STATIC_LIBRARY_SUFFIX}")
 	if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")

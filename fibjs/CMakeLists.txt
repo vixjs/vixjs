@@ -24,6 +24,7 @@ include_directories("${PROJECT_SOURCE_DIR}/include"
 	"${PROJECT_SOURCE_DIR}/../vender/mbedtls"
 	"${PROJECT_SOURCE_DIR}/../vender/zlib/include"
 	"${PROJECT_SOURCE_DIR}/../vender/msgpack/include"
+	"${PROJECT_SOURCE_DIR}/../deps/aliyun-oss/include"
 	"${CMAKE_CURRENT_BINARY_DIR}")
 
 setup_result_library(${name})

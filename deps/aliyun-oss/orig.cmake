@@ -136,15 +136,20 @@ add_library(${name} STATIC
     ${sdk_header}
     ${sdk_src})
 
-include_directories(
+target_include_directories(
+    ${name}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/alibabacloud/oss    
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/external/
 )
 
-include_directories(
+target_include_directories(
+    ${name}
     PRIVATE ${CRYPTO_INCLUDE_DIRS}
-    PRIVATE ${CLIENT_INCLUDE_DIRS})
+    PRIVATE ${CLIENT_INCLUDE_DIRS}
+)
+
+# target_link_libraries(${name} ${CRYPTO_LIBS} ${CLIENT_LIBS})
 
 target_compile_options(${name} 
     PRIVATE "${SDK_COMPILER_FLAGS}" "${EXTRA_DEFINE}")

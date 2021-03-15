@@ -1,0 +1,23 @@
+/*! @brief alicloud service 模块
+
+ 使用方法：
+ ```JavaScript
+ var alicloud = require('alicloud');
+
+ var oss = new alicloud.OSSClient({
+     regionId: 'xxx',
+     accessKeyId: 'xxx',
+     accessKeySecret: 'xxx'
+ });
+
+ var buckets = oss.ListBuckets();
+ ```
+ */
+module alicloud
+{
+    /*! @brief 创建一个 OSSClient 对象，参见 OSSClient */
+    static AliyunOSSClient new OSSClient();
+
+    /*! alicloud 服务的支持区域 */
+    static readonly Object regions;
+};

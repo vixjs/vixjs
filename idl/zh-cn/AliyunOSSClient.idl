@@ -1,0 +1,28 @@
+/*! @brief alicloud OSS 客户端工具
+
+ 创建方式:
+ ```JavaScript
+ var oss = new alicloud.OSSClient({...});
+ ```
+*/
+interface AliyunOSSClient : object
+{
+    /*! @brief 构造一个新的 AliyunOSSClient 对象
+
+     config 支持的选项如下：
+     ```JavaScript
+     {
+         "region": 'xxx', // {string} default: undefined, 阿里云服务区域 ID
+         "accessKeyId": 'xxx', // {string} default: undefined, 阿里云服务 accessKeyId
+         "accessKeySecret": 'xxx', // {string} default: undefined, 阿里云服务 accessKeySecret
+     }
+     ```
+
+     @param config
+     */
+    AliyunOSSClient(Object config);
+
+    /*! @brief 列出所有的 Buckets
+	 */
+    ListBuckets() async;
+};

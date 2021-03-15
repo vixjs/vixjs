@@ -6,5 +6,5 @@
     "Crypto": ["crypto", "hash"],
     "Compress": ["zip", "zlib"],
     "Test Suite": ["assert", "profiler", "test"],
-    "Utility": ["db", "gd", "util", "uuid", "vm", "xml"]
+    "Utility": ["db", "gd", "util", "uuid", "vm", "xml", "alicloud"]
 }
