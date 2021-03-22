@@ -25,6 +25,9 @@
 #include "options.h"
 #include "include/libplatform/libplatform.h"
 
+#include <jssdk/include/jssdk.h>
+#include <jssdk/include/jssdk-threads.h>
+
 namespace fibjs {
 
 void InitializeDateUtils();
@@ -41,7 +44,7 @@ result_t ifZipFile(exlib::string filename, bool& retVal);
 
 exlib::string s_root;
 
-static void createBasisForFiberLoop(v8::Platform* (*get_platform)())
+static void prepareForFiberService()
 {
     ::setlocale(LC_ALL, "");
 
@@ -53,7 +56,7 @@ static void createBasisForFiberLoop(v8::Platform* (*get_platform)())
     if (cpus < 2)
         cpus = 2;
 
-    exlib::Service::init(cpus + 1);
+    fiberServiceInitializeWorkers(cpus + 1);
 
     InitializeDateUtils();
     InitializeAcPool();
@@ -67,19 +70,16 @@ static void createBasisForFiberLoop(v8::Platform* (*get_platform)())
 
     srand((unsigned int)time(0));
 
-    v8::Platform* platform = get_platform != NULL ? get_platform() : v8::platform::CreateDefaultPlatform();
-    v8::V8::InitializePlatform(platform);
-    v8::V8::Initialize();
+    js::v8_api->init();
 }
 
-void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isolate*), v8::Platform* (*get_platform)())
+void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isolate*))
 {
     class EntryThread : public exlib::OSThread {
     public:
-        EntryThread(int32_t argc, char** argv, result_t (*jsFiber)(Isolate*), v8::Platform* (*get_platform)())
+        EntryThread(int32_t argc, char** argv, result_t (*jsFiber)(Isolate*))
             : m_argc(argc)
             , m_jsFiber(jsFiber)
-            , m_get_platform(get_platform)
         {
             for (int32_t i = 0; i < argc; i++)
                 m_argv.push_back(argv[i]);
@@ -129,7 +129,7 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
             m_sem.Post();
 
             if (!g_cefprocess) {
-                createBasisForFiberLoop(m_get_platform);
+                prepareForFiberService();
 
                 if (pos < argc) {
                     if (argv[pos][0] == '-')
@@ -149,8 +149,8 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
 
                 init_argv(argc, argv);
 
-                exlib::Service::CreateFiber(FirstFiber, this, 256 * 1024, "start");
-                exlib::Service::dispatch();
+                fiberServiceStartThread(FirstFiber, this, 256 * 1024, "start");
+                fiberServiceStartLoop();
             }
         }
 
@@ -162,10 +162,11 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
         std::vector<char*> m_argv;
         exlib::string m_fibjsEntry;
         result_t (*m_jsFiber)(Isolate*);
-        v8::Platform* (*m_get_platform)();
     };
 
-    EntryThread* entryThread = new EntryThread(argc, argv, jsEntryFiber, get_platform);
+    js::setup_v8();
+
+    EntryThread* entryThread = new EntryThread(argc, argv, jsEntryFiber);
     entryThread->start();
 
     entryThread->m_sem.Wait();
@@ -300,7 +301,7 @@ Isolate::Isolate(exlib::string jsFilename)
     m_currentFibers++;
     m_idleFibers++;
 
-    exlib::Service::CreateFiber(FiberProcIsolate, this, stack_size * 1024, "JSFiber");
+    fiberServiceStartThread(FiberProcIsolate, this, stack_size * 1024, "JSFiber");
 }
 
 Isolate* Isolate::current()

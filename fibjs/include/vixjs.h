@@ -13,7 +13,7 @@
 namespace fibjs {
 
 void runGuiThread(int argc, char* argv[]);
-void startJavascriptApp(int32_t argc, char** argv, result_t (*main)(Isolate*), v8::Platform* (*get_platform)() = NULL);
+void startJavascriptApp(int32_t argc, char** argv, result_t (*main)(Isolate*));
 result_t FiberProcJsEntry(Isolate* isolate);
 
 } /* namespace fibjs */
