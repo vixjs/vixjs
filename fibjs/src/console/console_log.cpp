@@ -9,9 +9,8 @@
 
 namespace fibjs {
 
-static int32_t s_loglevel = console_base::_NOTSET;
+static int32_t s_loglevel = console_base::C_NOTSET;
 std_logger* s_std;
-stream_logger* s_stream;
 
 #define MAX_LOGGER 10
 static logger* s_logs[MAX_LOGGER];
@@ -56,14 +55,11 @@ void outLog(int32_t priority, exlib::string msg)
 
     if (i == 0)
         s_std->log(priority, msg);
-
-    if (s_stream)
-        s_stream->log(priority, msg);
 }
 
 void errorLog(exlib::string msg)
 {
-    outLog(console_base::_ERROR, msg);
+    outLog(console_base::C_ERROR, msg);
 }
 
 void asyncLog(int32_t priority, exlib::string msg)
@@ -111,8 +107,7 @@ result_t console_base::add(exlib::string type)
         return CHECK_ERROR(CALL_E_INVALID_CALL);
 
     v8::Local<v8::Object> o = v8::Object::New(isolate->m_isolate);
-
-    o->Set(isolate->NewString("type", 4), isolate->NewString(type));
+    o->Set(isolate->context(), isolate->NewString("type", 4), isolate->NewString(type));
     return add(o);
 }
 
@@ -124,7 +119,7 @@ result_t console_base::add(v8::Local<v8::Object> cfg)
 
     JSValue type;
 
-    type = cfg->Get(isolate->NewString("type", 4));
+    type = cfg->Get(isolate->context(), isolate->NewString("type", 4));
     if (IsEmpty(type))
         return CHECK_ERROR(Runtime::setError("console: Missing log type."));
 
@@ -174,9 +169,10 @@ result_t console_base::add(v8::Local<v8::Array> cfg)
     int32_t sz = cfg->Length();
     int32_t i;
     result_t hr;
+    v8::Local<v8::Context> context = isolate->context();
 
     for (i = 0; i < sz; i++) {
-        JSValue v = cfg->Get(i);
+        JSValue v = cfg->Get(context, i);
         exlib::string s;
 
         hr = GetArgumentValue(v, s, true);

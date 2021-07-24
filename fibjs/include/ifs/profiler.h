@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _profiler_base_H_
-#define _profiler_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -24,27 +23,27 @@ class profiler_base : public object_base {
 
 public:
     enum {
-        _Node_Hidden = 0,
-        _Node_Array = 1,
-        _Node_String = 2,
-        _Node_Object = 3,
-        _Node_Code = 4,
-        _Node_Closure = 5,
-        _Node_RegExp = 6,
-        _Node_HeapNumber = 7,
-        _Node_Native = 8,
-        _Node_Synthetic = 9,
-        _Node_ConsString = 10,
-        _Node_SlicedString = 11,
-        _Node_Symbol = 12,
-        _Node_SimdValue = 13,
-        _Edge_ContextVariable = 0,
-        _Edge_Element = 1,
-        _Edge_Property = 2,
-        _Edge_Internal = 3,
-        _Edge_Hidden = 4,
-        _Edge_Shortcut = 5,
-        _Edge_Weak = 6
+        C_Node_Hidden = 0,
+        C_Node_Array = 1,
+        C_Node_String = 2,
+        C_Node_Object = 3,
+        C_Node_Code = 4,
+        C_Node_Closure = 5,
+        C_Node_RegExp = 6,
+        C_Node_HeapNumber = 7,
+        C_Node_Native = 8,
+        C_Node_Synthetic = 9,
+        C_Node_ConsString = 10,
+        C_Node_SlicedString = 11,
+        C_Node_Symbol = 12,
+        C_Node_SimdValue = 13,
+        C_Edge_ContextVariable = 0,
+        C_Edge_Element = 1,
+        C_Edge_Property = 2,
+        C_Edge_Internal = 3,
+        C_Edge_Hidden = 4,
+        C_Edge_Shortcut = 5,
+        C_Edge_Weak = 6
     };
 
 public:
@@ -90,27 +89,27 @@ inline ClassInfo& profiler_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "Node_Hidden", _Node_Hidden },
-        { "Node_Array", _Node_Array },
-        { "Node_String", _Node_String },
-        { "Node_Object", _Node_Object },
-        { "Node_Code", _Node_Code },
-        { "Node_Closure", _Node_Closure },
-        { "Node_RegExp", _Node_RegExp },
-        { "Node_HeapNumber", _Node_HeapNumber },
-        { "Node_Native", _Node_Native },
-        { "Node_Synthetic", _Node_Synthetic },
-        { "Node_ConsString", _Node_ConsString },
-        { "Node_SlicedString", _Node_SlicedString },
-        { "Node_Symbol", _Node_Symbol },
-        { "Node_SimdValue", _Node_SimdValue },
-        { "Edge_ContextVariable", _Edge_ContextVariable },
-        { "Edge_Element", _Edge_Element },
-        { "Edge_Property", _Edge_Property },
-        { "Edge_Internal", _Edge_Internal },
-        { "Edge_Hidden", _Edge_Hidden },
-        { "Edge_Shortcut", _Edge_Shortcut },
-        { "Edge_Weak", _Edge_Weak }
+        { "Node_Hidden", C_Node_Hidden },
+        { "Node_Array", C_Node_Array },
+        { "Node_String", C_Node_String },
+        { "Node_Object", C_Node_Object },
+        { "Node_Code", C_Node_Code },
+        { "Node_Closure", C_Node_Closure },
+        { "Node_RegExp", C_Node_RegExp },
+        { "Node_HeapNumber", C_Node_HeapNumber },
+        { "Node_Native", C_Node_Native },
+        { "Node_Synthetic", C_Node_Synthetic },
+        { "Node_ConsString", C_Node_ConsString },
+        { "Node_SlicedString", C_Node_SlicedString },
+        { "Node_Symbol", C_Node_Symbol },
+        { "Node_SimdValue", C_Node_SimdValue },
+        { "Edge_ContextVariable", C_Edge_ContextVariable },
+        { "Edge_Element", C_Edge_Element },
+        { "Edge_Property", C_Edge_Property },
+        { "Edge_Internal", C_Edge_Internal },
+        { "Edge_Hidden", C_Edge_Hidden },
+        { "Edge_Shortcut", C_Edge_Shortcut },
+        { "Edge_Weak", C_Edge_Weak }
     };
 
     static ClassData s_cd = {
@@ -201,5 +200,3 @@ inline void profiler_base::s_static_start(const v8::FunctionCallbackInfo<v8::Val
     METHOD_RETURN();
 }
 }
-
-#endif

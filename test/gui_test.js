@@ -32,7 +32,7 @@ if (win32 || darwin64) {
 
     before(() => {
       svr = new http.Server(8999 + base_port, {
-        '/(.+\.html$)': r => {
+        '/(.+\.(html|js)$)': r => {
           htmlHandler.invoke(r)
         },
         '/': r => {
@@ -48,7 +48,9 @@ if (win32 || darwin64) {
       it("basic", () => {
         var closed = false;
         var events = {};
-        var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/");
+        var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/", {
+          type: "native"
+        });
 
         var cnt = 0;
 
@@ -91,7 +93,9 @@ if (win32 || darwin64) {
 
     describe("close", () => {
       it("close directly by default", () => {
-        var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/close-directly.html");
+        var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/close-directly.html", {
+          type: "native"
+        });
 
         win.close();
       });
@@ -106,6 +110,7 @@ if (win32 || darwin64) {
        */
       xit("onmove by default on darwin", () => {
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/onmove.html", {
+          type: "native",
           title: "onmove"
         });
 
@@ -134,6 +139,7 @@ if (win32 || darwin64) {
       // TODO: trigger it by msg posted to NSWindow, tell it use internal darwin API
       it("resiable (default)", () => {
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/resizable.html", {
+          type: "native",
           title: "Resizable"
         });
 
@@ -184,6 +190,7 @@ if (win32 || darwin64) {
     darwin64 && xdescribe("options", () => {
       it("visible", () => {
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/normal.html", {
+          type: "native",
           title: "Normal - visible",
           visible: true,
         });
@@ -194,6 +201,7 @@ if (win32 || darwin64) {
 
       it("invisible", () => {
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/normal.html", {
+          type: "native",
           title: "Normal - invisible",
           visible: false,
         });
@@ -227,6 +235,7 @@ if (win32 || darwin64) {
 
       it("maxmize", () => {
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/normal.html", {
+          type: "native",
           title: "Maxmize",
           maximize: true,
         });
@@ -241,6 +250,7 @@ if (win32 || darwin64) {
       it("input.value", () => {
         var postedMsg
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/normal-html5.html", {
+          type: "native",
           title: "Manual Test - html5",
         });
 
@@ -248,11 +258,11 @@ if (win32 || darwin64) {
           postedMsg = msg
         }
 
-        coroutine.sleep(500);
-
-        assert.equal(postedMsg, 'input.value: initText')
+        for (var i = 0; i < 1000 && !postedMsg; i++)
+          coroutine.sleep(10);
 
         win.close();
+        assert.equal(postedMsg, 'input.value: initText')
       })
     });
 
@@ -264,6 +274,7 @@ if (win32 || darwin64) {
       }
       it("not resizable", () => {
         var win = prevWin = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/normal.html", {
+          type: "native",
           title: "Manual Test - not resizable",
           resizable: false
         });
@@ -274,6 +285,7 @@ if (win32 || darwin64) {
 
       it("resizable", () => {
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/normal.html", {
+          type: "native",
           title: "Manual Test - resizable",
         });
 
@@ -289,10 +301,11 @@ if (win32 || darwin64) {
 
       it("log", () => {
         var win = gui.open("http://127.0.0.1:" + (8999 + base_port) + "/normal-log.html", {
+          type: "native",
           title: "Manual Test - log",
         });
 
-        coroutine.sleep(500 /*  * 1e4 */ );
+        coroutine.sleep(500 /*  * 1e4 */);
         win.close();
         win = undefined;
       });
@@ -301,6 +314,7 @@ if (win32 || darwin64) {
     describe("fs://", () => {
       it("respond 404 info when trying to open one invalid html file", () => {
         var win = gui.open("fs://" + __dirname + "/gui_files/non-existed.html", {
+          type: "native",
           debug: false
         });
 
@@ -311,14 +325,80 @@ if (win32 || darwin64) {
 
       it("open one automatic-close html file", () => {
         gui.open("fs://" + __dirname + "/gui_files/t1000.html", {
+          type: "native",
           debug: false
         });
       });
 
       !isCI && it("open one automatic-close html file in zip file", () => {
         gui.open("fs://" + __dirname + "/gui_files/t1000.zip$/t1000.html", {
+          type: "native",
           debug: false
         });
+      });
+    });
+
+    win32 && describe("request resource", () => {
+      it('relative', (done) => {
+        var win = gui.open("fs://" + __dirname + "/gui_files/html-script/relative/relative.html", {
+          type: "native",
+          debug: false
+        });
+
+        win.onmessage = (msg) => {
+          win.close();
+
+          done(() => {
+            assert.equal(msg, 'request script relatively')
+          });
+        };
+      });
+
+      it('absolute', (done) => {
+        var fname = path.resolve(__dirname, 'gui_files/html-script/absolute/absolute.html');
+        var jsfname = path.join(__dirname, 'gui_files/html-script/absolute/absolute.js');
+
+        var content = `
+<html>
+  <head>
+      <title>absolute</title>
+      <meta charset="utf8" />
+      <script type="text/javascript" src="fs://${jsfname}"></script>
+  </head>
+  <body>
+      request script absolutely
+  </body>
+</html>
+        `;
+        fs.writeTextFile(fname, content);
+
+        var win = gui.open("fs://" + __dirname + "/gui_files/html-script/absolute/absolute.html", {
+          type: "native",
+          debug: false
+        });
+
+        win.onmessage = (msg) => {
+          win.close();
+
+          done(() => {
+            assert.equal(msg, 'request script absolutely')
+          });
+        };
+      });
+
+      it('http', (done) => {
+        var win = gui.open(`http://127.0.0.1:${(8999 + base_port)}/tag-script/http.html`, {
+          type: "native",
+          debug: false
+        });
+
+        win.onmessage = (msg) => {
+          win.close();
+
+          done(() => {
+            assert.equal(msg, 'request script by http')
+          });
+        };
       });
     });
 
@@ -329,9 +409,12 @@ if (win32 || darwin64) {
       var p = new io.BufferedStream(bs.stdout);
       var r = p.readLines();
       assert.equal(r[0], "this is.a log");
-      assert.equal(r[1], "this is.a warn");
 
-      assert.ok(r[2].startsWith("WebView Error:"));
+      var p1 = new io.BufferedStream(bs.stderr);
+      var r1 = p1.readLines();
+      assert.notEqual(r1.indexOf("this is.a warn"), -1);
+
+      // assert.ok(r1[1].startsWith("WebView Error:"));
     });
 
     it("debug", () => {

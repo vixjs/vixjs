@@ -5,13 +5,12 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include <v8/include/v8.h>
 #include <string>
 #include "date.h"
 #include "obj_ptr.h"
-
-#ifndef VARIANT_H_
-#define VARIANT_H_
 
 namespace fibjs {
 
@@ -32,16 +31,17 @@ inline void extend(const v8::Local<v8::Object> src,
     v8::Local<v8::Object>& dest, bool bDataOnly = true)
 {
     TryCatch try_catch;
-    JSArray ks = src->GetPropertyNames();
+    v8::Local<v8::Context> context = src->CreationContext();
+    JSArray ks = src->GetPropertyNames(context);
     int32_t len = ks->Length();
     int32_t i;
 
     for (i = 0; i < len; i++) {
-        JSValue k = ks->Get(i);
-        JSValue v = src->Get(k);
+        JSValue k = ks->Get(context, i);
+        JSValue v = src->Get(context, k);
 
         if (!bDataOnly || (!v.IsEmpty() && !v->IsFunction()))
-            dest->Set(k, v);
+            dest->Set(context, k, v);
     }
 }
 
@@ -564,4 +564,3 @@ public:
 };
 
 } /* namespace fibjs */
-#endif /* VARIANT_H_ */

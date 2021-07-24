@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 2.6)
 
-set(name "vixjs")
+set(name "fibjs")
 project(${name})
 
-include(../vender/tools/option.cmake)
+include(../vender/build_tools/cmake/option.cmake)
 
 add_library(${name} ${src_list} ${src_platform_list})
 
 if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Darwin" AND ${ARCH} STREQUAL "i386")
-	add_definitions(-DVIXJS_DISABLE_GUI)
+	add_definitions(-DFIBJS_DISABLE_GUI)
 endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../../../bin/${CMAKE_HOST_SYSTEM_NAME}_${ARCH}_${BUILD_TYPE})

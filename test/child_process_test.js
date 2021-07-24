@@ -39,6 +39,12 @@ describe("child_process", () => {
         stdout.readLine();
         assert.equal(stdout.readLine(), "console.print....");
         assert.closeTo(new Date().getTime() - t0, 2000, 500);
+
+        var stderr = new io.BufferedStream(bs.stderr);
+        assert.deepEqual(stderr.readLines(), [
+            "warn exec testing....",
+            "error exec testing...."
+        ]);
     });
 
     describe("ChildProcess::std[xx].fd", () => {
@@ -111,6 +117,27 @@ describe("child_process", () => {
             assert.closeTo(offsets[1], 2000, 1000);
         });
 
+        if (process.platform != "win32")
+            it("pty output", () => {
+                var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec.stdout.js')], {
+                    stdio: 'pty'
+                });
+                var stdout = new io.BufferedStream(bs.stdout);
+
+                assert.equal(stdout.readLine(), "exec testing....\r");
+
+                var t0 = new Date().getTime();
+
+                stdout.readLine();
+                var offsets = []
+                offsets[0] = new Date().getTime() - t0;
+                assert.closeTo(offsets[0], 1000, 500);
+
+                stdout.readLine();
+                offsets[1] = new Date().getTime() - t0;
+                assert.closeTo(offsets[1], 2000, 1000);
+            });
+
         it("console stdout output", () => {
             var status = child_process.run(cmd, [path.join(__dirname, 'process', 'exec.stdout.js')]);
             assert.equal(status, 0);
@@ -133,6 +160,14 @@ describe("child_process", () => {
 
     it("stdin/stdout", () => {
         var bs = child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec1.js')]);
+        var stdout = new io.BufferedStream(bs.stdout);
+
+        bs.stdin.write("hello, exec1" + os.EOL);
+        assert.equal(stdout.readLine(), "hello, exec1");
+    });
+
+    it("fork", () => {
+        var bs = child_process.fork(path.join(__dirname, 'process', 'exec1.js'));
         var stdout = new io.BufferedStream(bs.stdout);
 
         bs.stdin.write("hello, exec1" + os.EOL);
@@ -194,6 +229,12 @@ describe("child_process", () => {
     it("multi run", () => {
         coroutine.parallel([1, 2, 3, 4, 5, 6], (n) => {
             assert.equal(child_process.run(cmd, [path.join(__dirname, 'process', 'exec6.js'), n]), n);
+        });
+    });
+
+    it("FIX: crash when bad stdio array", () => {
+        child_process.spawn(cmd, [path.join(__dirname, 'process', 'exec.js')], {
+            stdio: ['pipe', ,]
         });
     });
 
@@ -300,11 +341,11 @@ describe("child_process", () => {
             var stdout = new io.BufferedStream(p.stdout);
 
             for (var i = 0; i < 100; i++) {
-                coroutine.sleep(10);
+                coroutine.sleep(500);
                 try {
                     net.connect('tcp://127.0.0.1:28080');
                     break;
-                } catch (e) {}
+                } catch (e) { }
             }
 
             assert.equal(stdout.readLine(), "700");
@@ -406,7 +447,8 @@ describe("child_process", () => {
 
         it("umask()", () => {
             const mask = '0664';
-            assert.equal(process.umask(), 0);
+            const unmask = process.umask();
+            assert.equal(0o777 & ~unmask, 0o755);
 
             const old = process.umask(mask);
             assert.equal(parseInt(mask, 8), process.umask(old));

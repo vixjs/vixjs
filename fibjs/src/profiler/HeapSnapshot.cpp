@@ -60,7 +60,7 @@ result_t profiler_base::diff(v8::Local<v8::Function> test, v8::Local<v8::Object>
     global_base::GC();
     s1 = new HeapSnapshotProxy(profiler->TakeHeapSnapshot());
 
-    test->Call(v8::Undefined(isolate->m_isolate), 0, NULL);
+    test->Call(test->CreationContext(), v8::Undefined(isolate->m_isolate), 0, NULL);
 
     global_base::GC();
     s2 = new HeapSnapshotProxy(profiler->TakeHeapSnapshot());
@@ -112,10 +112,12 @@ inline result_t GetArray(v8::Local<v8::Value> v, QuickArray<T>& n)
 
     JSArray a = v8::Local<v8::Array>::Cast(v);
     result_t hr;
+    Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
 
     for (int32_t i = 0; i < (int32_t)a->Length(); i++) {
         T vr;
-        hr = GetArgumentValue(JSValue(a->Get(i)), vr, true);
+        hr = GetArgumentValue(JSValue(a->Get(context, i)), vr, true);
         if (hr < 0)
             return hr;
 
@@ -141,12 +143,13 @@ inline bool checkArray(QuickArray<exlib::string>& a, const char* chks[], int32_t
 
 inline bool is_num_type(int32_t _type)
 {
-    return _type == profiler_base::_Edge_Element || _type == profiler_base::_Edge_Hidden;
+    return _type == profiler_base::C_Edge_Element || _type == profiler_base::C_Edge_Hidden;
 }
 
 result_t HeapSnapshot::load(exlib::string fname)
 {
     Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
     result_t hr;
     JSValue v;
     v8::Local<v8::Object> o;
@@ -182,22 +185,22 @@ result_t HeapSnapshot::load(exlib::string fname)
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
     o = v8::Local<v8::Object>::Cast(v);
-    hr = GetArray(o->Get(isolate->NewString("nodes")),
+    hr = GetArray(JSValue(o->Get(context, isolate->NewString("nodes"))),
         nodes);
     if (hr < 0)
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    hr = GetArray(o->Get(isolate->NewString("edges")),
+    hr = GetArray(JSValue(o->Get(context, isolate->NewString("edges"))),
         edges);
     if (hr < 0)
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    hr = GetArray(o->Get(isolate->NewString("strings")),
+    hr = GetArray(JSValue(o->Get(context, isolate->NewString("strings"))),
         names);
     if (hr < 0)
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    v = o->Get(isolate->NewString("snapshot"));
+    v = o->Get(context, isolate->NewString("snapshot"));
     if (v.IsEmpty() || !v->IsObject())
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
@@ -210,17 +213,17 @@ result_t HeapSnapshot::load(exlib::string fname)
     if (hr < 0)
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    v = o->Get(isolate->NewString("meta"));
+    v = o->Get(context, isolate->NewString("meta"));
     if (v.IsEmpty() || !v->IsObject())
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
     o = v8::Local<v8::Object>::Cast(v);
-    hr = GetArray(o->Get(isolate->NewString("node_fields")),
+    hr = GetArray(JSValue(o->Get(context, isolate->NewString("node_fields"))),
         node_fields);
     if (hr < 0 || checkArray(node_fields, node_fields_chk, ARRAYSIZE(node_fields_chk)))
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    hr = GetArray(o->Get(isolate->NewString("edge_fields")),
+    hr = GetArray(JSValue(o->Get(context, isolate->NewString("edge_fields"))),
         edge_fields);
     if (hr < 0 || checkArray(edge_fields, edge_fields_chk, ARRAYSIZE(edge_fields_chk)))
         return CHECK_ERROR(CALL_E_INVALID_DATA);
@@ -231,19 +234,19 @@ result_t HeapSnapshot::load(exlib::string fname)
     if (edge_fields.size() * edge_count != edges.size())
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    v = o->Get(isolate->NewString("node_types"));
+    v = o->Get(context, isolate->NewString("node_types"));
     if (v.IsEmpty() || !v->IsArray())
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    hr = GetArray(v8::Local<v8::Array>::Cast(v)->Get(0), node_types);
+    hr = GetArray(JSValue(v8::Local<v8::Array>::Cast(v)->Get(context, 0)), node_types);
     if (hr < 0 || checkArray(node_types, node_types_chk, ARRAYSIZE(node_types_chk)))
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    v = o->Get(isolate->NewString("edge_types"));
+    v = o->Get(context, isolate->NewString("edge_types"));
     if (v.IsEmpty() || !v->IsArray())
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
-    hr = GetArray(v8::Local<v8::Array>::Cast(v)->Get(0), edge_types);
+    hr = GetArray(JSValue(v8::Local<v8::Array>::Cast(v)->Get(context, 0)), edge_types);
     if (hr < 0 || checkArray(edge_types, edge_types_chk, ARRAYSIZE(edge_types_chk)))
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
@@ -428,7 +431,7 @@ result_t HeapSnapshot::save(exlib::string fname, AsyncEvent* ac)
     if (hr < 0)
         return hr;
 
-    m_nodes->get_length(count);
+    count = m_nodes->length();
     for (i = 0; i < count; i++) {
         Variant v;
         HeapGraphNode* cur;
@@ -440,7 +443,7 @@ result_t HeapSnapshot::save(exlib::string fname, AsyncEvent* ac)
 
         cur->get_childs(childs);
 
-        childs->get_length(n);
+        n = childs->length();
         child_count += n;
     }
 
@@ -466,7 +469,7 @@ result_t HeapSnapshot::save(exlib::string fname, AsyncEvent* ac)
         _name_id = _ids.id(_name);
 
         cur->get_childs(childs);
-        childs->get_length(_child);
+        _child = childs->length();
 
         if (i == 0)
             n = sprintf(buf, "%d,%d,%d,%d,%d,0\n", _type, _name_id, _id, _size, _child);
@@ -487,7 +490,7 @@ result_t HeapSnapshot::save(exlib::string fname, AsyncEvent* ac)
         HeapGraphNode_base* cur = nodes[i];
 
         cur->get_childs(childs);
-        childs->get_length(_child);
+        _child = childs->length();
 
         for (int32_t j = 0; j < _child; j++) {
             Variant v;

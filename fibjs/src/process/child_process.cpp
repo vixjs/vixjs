@@ -14,6 +14,7 @@
 #include "AsyncUV.h"
 #include "MemoryStream.h"
 #include "encoding.h"
+#include "ifs/process.h"
 
 namespace fibjs {
 
@@ -147,7 +148,7 @@ result_t child_process_base::execFile(exlib::string command, v8::Local<v8::Array
         util_base::clone(options, opts_);
 
         opts = v8::Local<v8::Object>::Cast(opts_);
-        opts->Delete(isolate->NewString("stdio"));
+        opts->Delete(opts->CreationContext(), isolate->NewString("stdio"));
 
         exlib::string codec("utf8");
         GetConfigValue(isolate->m_isolate, opts, "encoding", codec);
@@ -180,22 +181,46 @@ result_t child_process_base::exec(exlib::string command, v8::Local<v8::Object> o
 
     if (ac->isSync()) {
         Isolate* isolate = Isolate::current();
+        v8::Local<v8::Context> context = isolate->context();
         obj_ptr<NArray> _args;
         exlib::string cmd;
         v8::Local<v8::Array> args = v8::Array::New(isolate->m_isolate);
-        int32_t i;
+        size_t i;
 
         util_base::parseArgs(command, _args);
         if (_args->m_array.size()) {
             cmd = _args->m_array[0].string();
             for (i = 1; i < _args->m_array.size(); i++)
-                args->Set(i - 1, _args->m_array[i]);
+                args->Set(context, (int32_t)i - 1, _args->m_array[i]);
         }
 
         return execFile(cmd, args, options, _retVal, ac);
     }
 
     return execFile(command, v8::Local<v8::Array>(), options, _retVal, ac);
+}
+
+result_t child_process_base::fork(exlib::string module, v8::Local<v8::Array> args, v8::Local<v8::Object> options, obj_ptr<ChildProcess_base>& retVal)
+{
+    Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
+    exlib::string exePath;
+    v8::Local<v8::Array> args1 = v8::Array::New(isolate->m_isolate);
+
+    process_base::get_execPath(exePath);
+    args1->Set(context, 0, isolate->NewString(module));
+    if (!args.IsEmpty()) {
+        int32_t len = args->Length();
+        for (int32_t i = 0; i < len; i++)
+            args1->Set(context, i + 1, JSValue(args->Get(context, i)));
+    }
+
+    return spawn(exePath, args1, options, retVal);
+}
+
+result_t child_process_base::fork(exlib::string module, v8::Local<v8::Object> options, obj_ptr<ChildProcess_base>& retVal)
+{
+    return fork(module, v8::Local<v8::Array>(), options, retVal);
 }
 
 result_t child_process_base::run(exlib::string command, v8::Local<v8::Array> args,
@@ -229,6 +254,7 @@ result_t child_process_base::run(exlib::string command, v8::Local<v8::Array> arg
 
     if (ac->isSync()) {
         Isolate* isolate = Isolate::current();
+        v8::Local<v8::Context> context = isolate->context();
         exlib::string cmd;
         v8::Local<v8::Value> opts_;
         v8::Local<v8::Object> opts;
@@ -237,7 +263,7 @@ result_t child_process_base::run(exlib::string command, v8::Local<v8::Array> arg
         util_base::clone(options, opts_);
 
         opts = v8::Local<v8::Object>::Cast(opts_);
-        opts->Set(isolate->NewString("stdio"), isolate->NewString("inherit"));
+        opts->Set(context, isolate->NewString("stdio"), isolate->NewString("inherit"));
 
         result_t hr = spawn(command, args, opts, cp);
         if (hr < 0)
@@ -264,5 +290,4 @@ result_t child_process_base::run(exlib::string command, v8::Local<v8::Object> op
 {
     return run(command, v8::Local<v8::Array>(), options, retVal, ac);
 }
-
 }

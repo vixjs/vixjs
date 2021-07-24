@@ -5,12 +5,11 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "Message.h"
 #include "HttpCollection.h"
 #include "ifs/BufferedStream.h"
-
-#ifndef HTTPMESSAGE_H_
-#define HTTPMESSAGE_H_
 
 namespace fibjs {
 
@@ -30,6 +29,7 @@ public:
 
 public:
     // Message_base
+    virtual result_t get_data(v8::Local<v8::Value>& retVal);
     virtual result_t json(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal);
     virtual result_t json(v8::Local<v8::Value>& retVal);
     virtual result_t pack(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal);
@@ -97,4 +97,3 @@ public:
 };
 
 } /* namespace fibjs */
-#endif /* HTTPMESSAGE_H_ */

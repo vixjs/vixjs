@@ -5,15 +5,14 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/SandBox.h"
 #include "ifs/Stream.h"
 #include "ifs/process.h"
 #include "ifs/Worker.h"
 #include <map>
 #include <vector>
-
-#ifndef SANDBOX_H_
-#define SANDBOX_H_
 
 namespace fibjs {
 
@@ -47,7 +46,7 @@ public:
         v8::Local<v8::Object> o;
 
         if (!v->IsUndefined())
-            o = isolate->toLocalObject(v);
+            o = v8::Local<v8::Object>::Cast(v);
         else {
             o = v8::Object::New(isolate->m_isolate);
             SetPrivate("_mods", o);
@@ -59,14 +58,15 @@ public:
     void InstallModule(exlib::string fname, v8::Local<v8::Value> o, v8::Local<v8::Object> m = v8::Local<v8::Object>())
     {
         Isolate* isolate = holder();
+        v8::Local<v8::Context> _context = isolate->context();
 
         if (m.IsEmpty()) {
             m = v8::Object::New(isolate->m_isolate);
             if (!o.IsEmpty())
-                m->Set(isolate->NewString("exports"), o);
+                m->Set(_context, isolate->NewString("exports"), o);
         }
 
-        mods()->Set(isolate->NewString(fname), m);
+        mods()->Set(_context, isolate->NewString(fname), m);
     }
 
     v8::Local<v8::Value> get_module(v8::Local<v8::Object> mods, exlib::string id);
@@ -75,7 +75,7 @@ public:
     class Context {
     public:
         Context(SandBox* sb, exlib::string id);
-        static result_t repl(v8::Local<v8::Array> cmds, Stream_base* out);
+        static result_t repl();
 
     public:
         obj_ptr<SandBox> m_sb;
@@ -171,7 +171,7 @@ public:
     result_t resolve(exlib::string base, exlib::string& id, obj_ptr<Buffer_base>& data,
         v8::Local<v8::Value>& retVal);
 
-    result_t repl(v8::Local<v8::Array> cmds, Stream_base* out = NULL);
+    result_t repl();
 
     result_t run_module(exlib::string id, exlib::string base, v8::Local<v8::Value>& retVal);
     result_t run_main(exlib::string fname, v8::Local<v8::Array> argv);
@@ -234,4 +234,3 @@ public:
 };
 
 } /* namespace fibjs */
-#endif /* SANDBOX_H_ */

@@ -393,7 +393,8 @@ void date_t::parse(const char* str, int32_t len)
             monstr = str;
             timstr = str + 12;
             tzstr = str + 20;
-        } else if (checkmask(str, len, "## @$$ #### ##:##:##*")) // RFC 1123 format
+        } else if (checkmask(str, len, "## @$$ #### ##:##:##*")
+            || checkmask(str, len, "##-@$$-#### ##:##:##*")) // RFC 1123 format
         {
             wYear = (((str[7] & 0xf) * 10 + (str[8] & 0xf)) * 100
                 + ((str[9] & 0xf) * 10) + (str[10] & 0xf));
@@ -554,7 +555,7 @@ void date_t::toGMTString(exlib::string& retVal)
     Part ds = _getdate(d);
 
     retVal.resize(29);
-    char* ptrBuf = &retVal[0];
+    char* ptrBuf = retVal.c_buffer();
 
     putStr(ptrBuf, szDays[ds.wDayOfWeek], 3);
     putStr(ptrBuf, ", ", 2);
@@ -580,7 +581,7 @@ void date_t::toX509String(exlib::string& retVal)
     Part ds = _getdate(d);
 
     retVal.resize(14);
-    char* ptrBuf = &retVal[0];
+    char* ptrBuf = retVal.c_buffer();
 
     putInt(ptrBuf, ds.wYear, 4);
     putInt(ptrBuf, ds.wMonth + 1, 2);
@@ -598,7 +599,7 @@ void date_t::sqlString(exlib::string& retVal)
     Part ds = _getdate((double)s_dc->ToLocal((int64_t)d));
 
     retVal.resize(19);
-    char* ptrBuf = &retVal[0];
+    char* ptrBuf = retVal.c_buffer();
 
     putInt(ptrBuf, ds.wYear, 4);
     *ptrBuf++ = '-';
@@ -621,7 +622,7 @@ void date_t::stamp(exlib::string& retVal)
     Part ds = _getdate((double)s_dc->ToLocal((int64_t)d));
 
     retVal.resize(14);
-    char* ptrBuf = &retVal[0];
+    char* ptrBuf = retVal.c_buffer();
 
     putInt(ptrBuf, ds.wYear, 4);
     putInt(ptrBuf, ds.wMonth + 1, 2);

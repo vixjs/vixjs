@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _EventEmitter_base_H_
-#define _EventEmitter_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -40,6 +39,7 @@ public:
     virtual result_t removeListener(exlib::string ev, v8::Local<v8::Function> func, v8::Local<v8::Object>& retVal) = 0;
     virtual result_t removeListener(exlib::string ev, v8::Local<v8::Object>& retVal) = 0;
     virtual result_t removeListener(v8::Local<v8::Object> map, v8::Local<v8::Object>& retVal) = 0;
+    virtual result_t removeAllListeners(exlib::string ev, v8::Local<v8::Object>& retVal) = 0;
     virtual result_t removeAllListeners(v8::Local<v8::Array> evs, v8::Local<v8::Object>& retVal) = 0;
     virtual result_t setMaxListeners(int32_t n) = 0;
     virtual result_t getMaxListeners(int32_t& retVal) = 0;
@@ -93,13 +93,17 @@ inline ClassInfo& EventEmitter_base::class_info()
         { "emit", s_emit, false }
     };
 
+    static ClassData::ClassObject s_object[] = {
+        { "EventEmitter", EventEmitter_base::class_info }
+    };
+
     static ClassData::ClassProperty s_property[] = {
         { "defaultMaxListeners", s_static_get_defaultMaxListeners, s_static_set_defaultMaxListeners, true }
     };
 
     static ClassData s_cd = {
         "EventEmitter", false, s__new, NULL,
-        ARRAYSIZE(s_method), s_method, 0, NULL, ARRAYSIZE(s_property), s_property, 0, NULL, NULL, NULL,
+        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, ARRAYSIZE(s_property), s_property, 0, NULL, NULL, NULL,
         &object_base::class_info()
     };
 
@@ -339,6 +343,12 @@ inline void EventEmitter_base::s_removeAllListeners(const v8::FunctionCallbackIn
     METHOD_INSTANCE(EventEmitter_base);
     METHOD_ENTER();
 
+    METHOD_OVER(1, 1);
+
+    ARG(exlib::string, 0);
+
+    hr = pInst->removeAllListeners(v0, vr);
+
     METHOD_OVER(1, 0);
 
     OPT_ARG(v8::Local<v8::Array>, 0, v8::Array::New(isolate));
@@ -445,5 +455,3 @@ inline void EventEmitter_base::s_emit(const v8::FunctionCallbackInfo<v8::Value>&
     METHOD_RETURN();
 }
 }
-
-#endif

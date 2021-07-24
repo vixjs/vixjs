@@ -5,12 +5,11 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/Timer.h"
 #include "Fiber.h"
 #include <vector>
-
-#ifndef TIMER_H_
-#define TIMER_H_
 
 namespace fibjs {
 
@@ -154,7 +153,7 @@ public:
         if (m_hr)
             isolate->RequestInterrupt(_InterruptCallback, this);
         else
-            requestIsolateRun(isolate, _callback, this);
+            syncCall(isolate, _callback, this);
     }
 
     static void _InterruptCallback(v8::Isolate* isolate, void* data)
@@ -190,7 +189,7 @@ public:
         for (int i = 0; i < nArgCount; i++)
             argv[i] = v8::Local<v8::Value>::New(isolate->m_isolate, m_argv[i]);
 
-        callback->Call(wrap(), (int32_t)argv.size(), argv.data());
+        callback->Call(callback->CreationContext(), wrap(), (int32_t)argv.size(), argv.data());
     }
 
     virtual void on_timer()
@@ -270,5 +269,3 @@ public:
     obj_ptr<JSTimer> m_timer;
 };
 }
-
-#endif

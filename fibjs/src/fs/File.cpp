@@ -8,9 +8,9 @@
 #include "object.h"
 
 #include "ifs/io.h"
+#include "ifs/fs.h"
 #include "File.h"
 #include "Buffer.h"
-#include "Stat.h"
 
 #ifdef _WIN32
 #define pclose _pclose
@@ -58,7 +58,7 @@ result_t File::read(int32_t bytes, obj_ptr<Buffer_base>& retVal,
     if (bytes > 0) {
         strBuf.resize(bytes);
         int32_t sz = bytes;
-        char* p = &strBuf[0];
+        char* p = strBuf.c_buffer();
 
         while (sz) {
             int32_t n = (int32_t)::_read(m_fd, p, sz > STREAM_BUFF_SIZE ? STREAM_BUFF_SIZE : sz);
@@ -111,7 +111,7 @@ result_t File::readAll(obj_ptr<Buffer_base>& retVal, AsyncEvent* ac)
     if (bytes > 0) {
         strBuf.resize(bytes);
         int32_t sz = bytes;
-        char* p = &strBuf[0];
+        char* p = strBuf.c_buffer();
 
         while (sz) {
             int32_t n = (int32_t)::_read(m_fd, p, sz > STREAM_BUFF_SIZE ? STREAM_BUFF_SIZE : sz);
@@ -205,15 +205,7 @@ result_t File::stat(obj_ptr<Stat_base>& retVal, AsyncEvent* ac)
     if (m_fd == -1)
         return CHECK_ERROR(CALL_E_INVALID_CALL);
 
-    if (ac->isSync())
-        return CHECK_ERROR(CALL_E_NOSYNC);
-
-    obj_ptr<Stat> pStat = new Stat();
-    pStat->getStat(name);
-
-    retVal = pStat;
-
-    return 0;
+    return fs_base::stat(name, retVal, ac);
 }
 
 result_t File::size(int64_t& retVal)

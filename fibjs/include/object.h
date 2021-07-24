@@ -4,8 +4,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _fj_object_H_
-#define _fj_object_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -185,6 +184,14 @@ public:
         return o;
     }
 
+    void safe_release()
+    {
+        if (m_isolate)
+            syncCall(m_isolate, final_release, this);
+        else
+            final_release(this);
+    }
+
 public:
     class scope {
     public:
@@ -216,6 +223,7 @@ public:
     result_t off(exlib::string ev, v8::Local<v8::Function> func, v8::Local<v8::Object>& retVal);
     result_t off(exlib::string ev, v8::Local<v8::Object>& retVal);
     result_t off(v8::Local<v8::Object> map, v8::Local<v8::Object>& retVal);
+    result_t removeAllListeners(exlib::string ev, v8::Local<v8::Object>& retVal);
     result_t removeAllListeners(v8::Local<v8::Array> evs, v8::Local<v8::Object>& retVal);
     result_t setMaxListeners(int32_t n);
     result_t getMaxListeners(int32_t& retVal);
@@ -293,31 +301,35 @@ public:
     {
         v8::Local<v8::Object> o = wrap();
         Isolate* isolate = holder();
+        v8::Local<v8::Context> context = o->CreationContext();
 
         v8::Local<v8::Private> k = v8::Private::ForApi(isolate->m_isolate, isolate->NewString("_private_object"));
-        JSValue v = o->GetPrivate(o->CreationContext(), k);
+        JSValue v = o->GetPrivate(context, k);
 
         if (v->IsObject())
             return v8::Local<v8::Object>::Cast(v);
 
         v8::Local<v8::Object> po = v8::Object::New(isolate->m_isolate);
-        o->SetPrivate(o->CreationContext(), k, po);
+        o->SetPrivate(context, k, po);
         return po;
     }
 
     v8::Local<v8::Value> GetPrivate(exlib::string key)
     {
-        return GetPrivateObject()->Get(holder()->NewString(key));
+        v8::Local<v8::Context> context = wrap()->CreationContext();
+        return JSValue(GetPrivateObject()->Get(context, holder()->NewString(key)));
     }
 
     void SetPrivate(exlib::string key, v8::Local<v8::Value> value)
     {
-        GetPrivateObject()->Set(holder()->NewString(key), value);
+        v8::Local<v8::Context> context = wrap()->CreationContext();
+        GetPrivateObject()->Set(context, holder()->NewString(key), value);
     }
 
     void DeletePrivate(exlib::string key)
     {
-        GetPrivateObject()->Delete(holder()->NewString(key));
+        v8::Local<v8::Context> context = wrap()->CreationContext();
+        GetPrivateObject()->Delete(context, holder()->NewString(key));
     }
 
 public:
@@ -386,7 +398,7 @@ public:
 
         exlib::string strError = "Property \'";
 
-        strError += ToCString(v8::String::Utf8Value(isolate->m_isolate, property));
+        strError += isolate->toString(property);
         strError += "\' is read-only.";
         isolate->m_isolate->ThrowException(
             isolate->NewString(strError));
@@ -439,14 +451,7 @@ public:
     virtual void Unref()
     {
         if (internalUnref() == 0)
-            requestIsolateRun(m_isolate, _release, this);
-    }
-
-private:
-    static result_t _release(ValueHolder* pThis)
-    {
-        delete pThis;
-        return 0;
+            syncCall(m_isolate, final_release, this);
     }
 
 private:
@@ -557,8 +562,6 @@ inline void object_base::s_toJSON(const v8::FunctionCallbackInfo<v8::Value>& arg
     METHOD_RETURN();
 }
 }
-
-#endif
 
 #ifdef _assert
 #undef _assert

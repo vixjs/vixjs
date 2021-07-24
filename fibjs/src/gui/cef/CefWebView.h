@@ -9,15 +9,14 @@
 #include "ifs/json.h"
 #include "include/cef_client.h"
 
-#ifndef WEBVIEW_CEF_H_
-#define WEBVIEW_CEF_H_
+#pragma once
 
 namespace fibjs {
 
 class CefWebView : public WebView_base,
                    public CefDevToolsMessageObserver {
 public:
-    CefWebView(exlib::string url, NObject* opt);
+    CefWebView(exlib::string url, NObject* opt, CefRefPtr<CefValue> proxy);
     ~CefWebView();
 
     EVENT_SUPPORT();
@@ -36,6 +35,7 @@ public:
     virtual result_t executeDevToolsMethod(exlib::string method, v8::Local<v8::Object> params, Variant& retVal, AsyncEvent* ac);
     virtual result_t close(AsyncEvent* ac);
     virtual result_t postMessage(exlib::string msg, AsyncEvent* ac);
+    virtual result_t get_type(exlib::string& retVal);
     virtual result_t get_dev(v8::Local<v8::Value>& retVal);
 
 public:
@@ -56,10 +56,13 @@ public:
 public:
     EVENT_FUNC(open);
     EVENT_FUNC(load);
+    EVENT_FUNC(address);
+    EVENT_FUNC(title);
     EVENT_FUNC(move);
     EVENT_FUNC(resize);
     EVENT_FUNC(closed);
     EVENT_FUNC(message);
+    EVENT_FUNC(download);
 
 public:
     void AddRef() const OVERRIDE
@@ -89,6 +92,10 @@ public:
 public:
     obj_ptr<NObject> m_opt;
     exlib::string m_url;
+    exlib::string m_download_path;
+    bool m_download_dialog;
+
+    CefRefPtr<CefValue> m_proxy;
 
     obj_ptr<ValueHolder> m_holder;
     CefRefPtr<CefBrowser> m_browser;
@@ -119,8 +126,8 @@ private:
     };
 
     int32_t m_eid;
+    exlib::spinlock m_method_lock;
     std::map<int32_t, ac_method> m_method;
+    std::map<int32_t, exlib::string> m_result;
 };
 }
-
-#endif

@@ -6,7 +6,7 @@
  */
 
 #ifndef _WIN32
-#if !defined(__APPLE__) || defined(VIXJS_DISABLE_GUI)
+#if !defined(__APPLE__) || defined(FIBJS_DISABLE_GUI)
 
 #include "object.h"
 #include "ifs/gui.h"

@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _net_base_H_
-#define _net_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -27,14 +26,16 @@ class net_base : public object_base {
 
 public:
     enum {
-        _AF_INET = 2,
-        _AF_INET6 = 10,
-        _SOCK_STREAM = 1,
-        _SOCK_DGRAM = 2
+        C_AF_UNIX = 1,
+        C_AF_PIPE = 1,
+        C_AF_INET = 2,
+        C_AF_INET6 = 10
     };
 
 public:
     // net_base
+    static result_t get_use_uv_socket(bool& retVal);
+    static result_t set_use_uv_socket(bool newVal);
     static result_t info(v8::Local<v8::Object>& retVal);
     static result_t resolve(exlib::string name, int32_t family, exlib::string& retVal, AsyncEvent* ac);
     static result_t ip(exlib::string name, exlib::string& retVal, AsyncEvent* ac);
@@ -58,6 +59,8 @@ public:
     }
 
 public:
+    static void s_static_get_use_uv_socket(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
+    static void s_static_set_use_uv_socket(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& args);
     static void s_static_info(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_ip(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -112,21 +115,48 @@ inline ClassInfo& net_base::class_info()
         { "Url", UrlObject_base::class_info }
     };
 
+    static ClassData::ClassProperty s_property[] = {
+        { "use_uv_socket", s_static_get_use_uv_socket, s_static_set_use_uv_socket, true }
+    };
+
     static ClassData::ClassConst s_const[] = {
-        { "AF_INET", _AF_INET },
-        { "AF_INET6", _AF_INET6 },
-        { "SOCK_STREAM", _SOCK_STREAM },
-        { "SOCK_DGRAM", _SOCK_DGRAM }
+        { "AF_UNIX", C_AF_UNIX },
+        { "AF_PIPE", C_AF_PIPE },
+        { "AF_INET", C_AF_INET },
+        { "AF_INET6", C_AF_INET6 }
     };
 
     static ClassData s_cd = {
         "net", true, s__new, NULL,
-        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, 0, NULL, ARRAYSIZE(s_const), s_const, NULL, NULL,
+        ARRAYSIZE(s_method), s_method, ARRAYSIZE(s_object), s_object, ARRAYSIZE(s_property), s_property, ARRAYSIZE(s_const), s_const, NULL, NULL,
         &object_base::class_info()
     };
 
     static ClassInfo s_ci(s_cd);
     return s_ci;
+}
+
+inline void net_base::s_static_get_use_uv_socket(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args)
+{
+    bool vr;
+
+    METHOD_NAME("net.use_uv_socket");
+    PROPERTY_ENTER();
+
+    hr = get_use_uv_socket(vr);
+
+    METHOD_RETURN();
+}
+
+inline void net_base::s_static_set_use_uv_socket(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& args)
+{
+    METHOD_NAME("net.use_uv_socket");
+    PROPERTY_ENTER();
+    PROPERTY_VAL(bool);
+
+    hr = set_use_uv_socket(v0);
+
+    PROPERTY_SET_LEAVE();
 }
 
 inline void net_base::s_static_info(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -153,7 +183,7 @@ inline void net_base::s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>
     ASYNC_METHOD_OVER(2, 1);
 
     ARG(exlib::string, 0);
-    OPT_ARG(int32_t, 1, _AF_INET);
+    OPT_ARG(int32_t, 1, C_AF_INET);
 
     if (!cb.IsEmpty())
         hr = acb_resolve(v0, v1, cb, args);
@@ -303,5 +333,3 @@ inline void net_base::s_static_isIPv6(const v8::FunctionCallbackInfo<v8::Value>&
     METHOD_RETURN();
 }
 }
-
-#endif

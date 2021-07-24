@@ -4,8 +4,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _fj_utils_H_
-#define _fj_utils_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -115,7 +114,7 @@ typedef int32_t result_t;
 #define CALL_RETURN_NULL 100000
 #define CALL_RETURN_CALLBACK 100001
 
-#define CALL_E_MAX -100000
+#define CALL_E_MAX -20000
 // Invalid number of parameters.
 #define CALL_E_BADPARAMCOUNT (CALL_E_MAX - 1)
 // Parameter not optional.
@@ -172,16 +171,18 @@ typedef int32_t result_t;
 // Object closed.
 #define CALL_E_CLOSED (CALL_E_MAX - 26)
 
-#define CALL_E_MIN -100100
+#define CALL_E_MIN (CALL_E_MAX - 100)
 
 #ifndef _WIN32
 #define CALL_E_FILE_NOT_FOUND (-ENOENT)
 #define CALL_E_PATH_NOT_FOUND (-ENOENT)
 #define CALL_E_BAD_FILE (-EBADF)
+#define CALL_E_NETNAME_DELETED (-ENOENT)
 #else
 #define CALL_E_FILE_NOT_FOUND (-ERROR_FILE_NOT_FOUND)
 #define CALL_E_PATH_NOT_FOUND (-ERROR_PATH_NOT_FOUND)
 #define CALL_E_BAD_FILE (-ERROR_OPERATION_ABORTED)
+#define CALL_E_NETNAME_DELETED (-ERROR_NETNAME_DELETED)
 #endif
 
 #define STREAM_BUFF_SIZE 65536
@@ -507,6 +508,11 @@ public:                                                                         
     {                                                                                      \
         return object_base::off(map, retVal);                                              \
     }                                                                                      \
+    virtual result_t removeAllListeners(exlib::string ev,                                  \
+        v8::Local<v8::Object>& retVal)                                                     \
+    {                                                                                      \
+        return object_base::removeAllListeners(ev, retVal);                                \
+    }                                                                                      \
     virtual result_t removeAllListeners(v8::Local<v8::Array> evs,                          \
         v8::Local<v8::Object>& retVal)                                                     \
     {                                                                                      \
@@ -575,56 +581,28 @@ public:                                                  \
     ((TYPE*)((char*)(ptr)-offsetof(TYPE, MEMBER)))
 #endif
 
-inline result_t GetArgumentValue(v8::Local<v8::Value> v, exlib::string& n, bool bStrict = false)
-{
-    if (v.IsEmpty())
-        return CALL_E_TYPEMISMATCH;
-
-    v8::Local<v8::String> str;
-
-    Isolate* isolate = Isolate::current();
-    if (!isolate)
-        return CALL_E_JAVASCRIPT;
-
-    if (v->IsString())
-        str = v8::Local<v8::String>::Cast(v);
-    else if (v->IsStringObject())
-        str = v8::Local<v8::StringObject>::Cast(v)->ValueOf();
-    else if (!bStrict)
-        str = v->ToString(isolate->m_isolate);
-    else
-        return CALL_E_TYPEMISMATCH;
-
-    if (str.IsEmpty())
-        return CALL_E_JAVASCRIPT;
-
-    int32_t bufUtf8Len = str->Utf8Length(isolate->m_isolate);
-    n.resize(bufUtf8Len);
-    int flags = v8::String::HINT_MANY_WRITES_EXPECTED | v8::String::NO_NULL_TERMINATION;
-
-    str->WriteUtf8(isolate->m_isolate, n.c_buffer(), bufUtf8Len, NULL, flags);
-
-    return 0;
-}
+result_t GetArgumentValue(v8::Local<v8::Value> v, exlib::string& n, bool bStrict = false);
 
 inline result_t GetArgumentValue(v8::Isolate* isolate, v8::Local<v8::Value> v, double& n, bool bStrict = false)
 {
     if (v.IsEmpty())
         return CALL_E_TYPEMISMATCH;
 
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
     if (v->IsNumber() || v->IsNumberObject()) {
-        n = v->NumberValue(isolate->GetCurrentContext()).ToChecked();
+        n = v->NumberValue(context).ToChecked();
         return std::isnan(n) ? CALL_E_TYPEMISMATCH : 0;
     }
 
     if (bStrict)
         return CALL_E_TYPEMISMATCH;
 
-    v = v->ToNumber(isolate);
+    v = v->ToNumber(context).ToLocalChecked();
     if (v.IsEmpty())
         return CALL_E_JAVASCRIPT;
 
-    n = v->NumberValue(isolate->GetCurrentContext()).ToChecked();
+    n = v->NumberValue(context).ToChecked();
     return std::isnan(n) ? CALL_E_TYPEMISMATCH : 0;
 }
 
@@ -634,6 +612,7 @@ inline result_t GetArgumentValue(v8::Isolate* isolate, v8::Local<v8::Value> v, i
         return CALL_E_TYPEMISMATCH;
 
     v8::MaybeLocal<v8::BigInt> mv;
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     if (!v->IsBigInt() && !v->IsBigIntObject()) {
         if (!v->IsNumber() && !v->IsNumberObject()) {
@@ -642,16 +621,16 @@ inline result_t GetArgumentValue(v8::Isolate* isolate, v8::Local<v8::Value> v, i
 
             {
                 TryCatch try_catch;
-                mv = v->ToBigInt(isolate->GetCurrentContext());
+                mv = v->ToBigInt(context);
             }
             if (mv.IsEmpty()) {
-                v = v->ToNumber(isolate);
+                v = v->ToNumber(context).ToLocalChecked();
                 if (v.IsEmpty())
                     return CALL_E_JAVASCRIPT;
             }
         }
     } else {
-        mv = v->ToBigInt(isolate->GetCurrentContext());
+        mv = v->ToBigInt(context);
         if (mv.IsEmpty())
             return CALL_E_JAVASCRIPT;
     }
@@ -664,7 +643,7 @@ inline result_t GetArgumentValue(v8::Isolate* isolate, v8::Local<v8::Value> v, i
     } else {
         double num;
 
-        num = v->NumberValue(isolate->GetCurrentContext()).ToChecked();
+        num = v->NumberValue(context).ToChecked();
         if (std::isnan(num))
             return CALL_E_TYPEMISMATCH;
 
@@ -709,10 +688,20 @@ inline result_t GetArgumentValue(v8::Local<v8::Value> v, date_t& d, bool bStrict
     if (v.IsEmpty())
         return CALL_E_TYPEMISMATCH;
 
-    if (!v->IsDate())
-        return CALL_E_TYPEMISMATCH;
+    if (v->IsDate()) {
+        d = v;
+    } else {
+        if (bStrict)
+            return CALL_E_TYPEMISMATCH;
 
-    d = v;
+        double n;
+        result_t hr = GetArgumentValue(Isolate::current()->m_isolate, v, n);
+        if (hr < 0)
+            return hr;
+
+        d = n;
+    }
+
     return 0;
 }
 
@@ -970,7 +959,8 @@ template <typename T>
 result_t GetConfigValue(v8::Isolate* isolate, v8::Local<v8::Object> o,
     const char* key, T& n, bool bStrict = false)
 {
-    JSValue v = o->Get(NewString(isolate, key));
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    JSValue v = o->Get(context, NewString(isolate, key));
     if (IsEmpty(v))
         return CALL_E_PARAMNOTOPTIONAL;
 
@@ -1034,26 +1024,17 @@ inline v8::Local<v8::Value> GetReturnValue(v8::Isolate* isolate, v8::Local<v8::F
     return func;
 }
 
+inline v8::Local<v8::Value> GetReturnValue(v8::Isolate* isolate, v8::Local<v8::ArrayBuffer>& array)
+{
+    return array;
+}
+
 template <class T>
 inline v8::Local<v8::Value> GetReturnValue(v8::Isolate* isolate, obj_ptr<T>& obj)
 {
     v8::Local<v8::Value> v;
     obj->valueOf(v);
     return v;
-}
-
-inline v8::Local<v8::Object> GetIteratorReturnValue(v8::Isolate* isolate, v8::Local<v8::Array>& array)
-{
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-    v8::Local<v8::Symbol> symbol = v8::Symbol::GetIterator(isolate);
-    return array->Get(context, symbol)
-        .ToLocalChecked()
-        ->ToObject(context)
-        .ToLocalChecked()
-        ->CallAsFunction(context, array, 0, NULL)
-        .ToLocalChecked()
-        ->ToObject(context)
-        .ToLocalChecked();
 }
 
 inline v8::Local<v8::Value> ThrowError(v8::Local<v8::Value> exception)
@@ -1066,9 +1047,10 @@ inline v8::Local<v8::Value> ThrowError(result_t hr, exlib::string msg)
 {
     Isolate* isolate = Isolate::current();
     JSValue exception = v8::Exception::Error(isolate->NewString(msg));
+    v8::Local<v8::Context> context = isolate->context();
 
-    isolate->toLocalObject(exception)
-        ->Set(isolate->NewString("number"), v8::Int32::New(isolate->m_isolate, -hr));
+    v8::Local<v8::Object>::Cast(exception)
+        ->Set(context, isolate->NewString("number"), v8::Int32::New(isolate->m_isolate, -hr));
     return ThrowError(exception);
 }
 
@@ -1132,7 +1114,7 @@ inline v8::Local<v8::Value> ThrowURIError(const char* msg)
     Isolate* isolate = Isolate::current();
     auto _context = isolate->context();
     auto glob = _context->Global();
-    auto URIError = (glob->Get(isolate->NewString("URIError"))).As<v8::Object>();
+    auto URIError = (JSValue(glob->Get(_context, isolate->NewString("URIError")))).As<v8::Object>();
 
     v8::Local<v8::Value> args[] = { isolate->NewString(msg) };
     auto error = URIError->CallAsConstructor(_context, 1, args).ToLocalChecked();
@@ -1149,7 +1131,7 @@ inline v8::Local<v8::Value> ThrowEvalError(const char* msg)
     Isolate* isolate = Isolate::current();
     auto _context = isolate->context();
     auto glob = _context->Global();
-    auto EvalError = (JSValue(glob->Get(isolate->NewString("EvalError")))).As<v8::Object>();
+    auto EvalError = (JSValue(glob->Get(_context, isolate->NewString("EvalError")))).As<v8::Object>();
 
     v8::Local<v8::Value> args[] = { isolate->NewString(msg) };
     auto error = EvalError->CallAsConstructor(_context, 1, args).ToLocalChecked();
@@ -1365,6 +1347,14 @@ private:
     JSFiber* m_fb;
     const char* m_name;
 };
-}
 
-#endif
+inline bool is_big_endian()
+{
+    union {
+        uint32_t i;
+        char c[4];
+    } bint = { 0x01020304 };
+
+    return bint.c[0] == 1;
+}
+}

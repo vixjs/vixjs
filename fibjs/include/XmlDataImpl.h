@@ -5,12 +5,11 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "utils.h"
 #include <string.h>
 #include "utf8.h"
-
-#ifndef XMLDATAIMPL_H_
-#define XMLDATAIMPL_H_
 
 namespace fibjs {
 
@@ -157,7 +156,7 @@ public:
             return m_data;
 
         str.resize(sz1);
-        char* data1 = &str[0];
+        char* data1 = str.c_buffer();
 
         for (i = 0; i < sz; i++) {
             char ch;
@@ -192,4 +191,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* XMLDATAIMPL_H_ */

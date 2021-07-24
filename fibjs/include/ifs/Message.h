@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _Message_base_H_
-#define _Message_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -25,8 +24,8 @@ class Message_base : public object_base {
 
 public:
     enum {
-        _TEXT = 1,
-        _BINARY = 2
+        C_TEXT = 1,
+        C_BINARY = 2
     };
 
 public:
@@ -132,8 +131,8 @@ inline ClassInfo& Message_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "TEXT", _TEXT },
-        { "BINARY", _BINARY }
+        { "TEXT", C_TEXT },
+        { "BINARY", C_BINARY }
     };
 
     static ClassData s_cd = {
@@ -494,5 +493,3 @@ inline void Message_base::s_set_lastError(v8::Local<v8::Name> property, v8::Loca
     PROPERTY_SET_LEAVE();
 }
 }
-
-#endif

@@ -37,9 +37,183 @@ gui.config({
     }
 });
 
-describe("cef", () => {
-    var svr;
+var key_code = {
+    "Backspace": 8,
+    "Tab": 9,
+    "Enter": 13,
+    "ShiftLeft": 16,
+    "ShiftRight": 16,
+    "ControlLeft": 17,
+    "ControlRight": 17,
+    "AltLeft": 18,
+    "AltRight": 18,
+    "Pause": 19,
+    "CapsLock": 20,
+    "Escape": 27,
+    "Theevent": 32,
+    "PageUp": 33,
+    "PageDown": 34,
+    "End": 35,
+    "Home": 36,
+    "ArrowLeft": 37,
+    "ArrowUp": 38,
+    "ArrowRight": 39,
+    "ArrowDown": 40,
+    "PrintScreen": 44,
+    "Insert": 45,
+    "Delete": 46,
+    "Digit0": 48,
+    "Digit1": 49,
+    "Digit2": 50,
+    "Digit3": 51,
+    "Digit4": 52,
+    "Digit5": 53,
+    "Digit6": 54,
+    "Digit7": 55,
+    "Digit8": 56,
+    "Digit9": 57,
+    "KeyA": 65,
+    "KeyB": 66,
+    "KeyC": 67,
+    "KeyD": 68,
+    "KeyE": 69,
+    "KeyF": 70,
+    "KeyG": 71,
+    "KeyH": 72,
+    "KeyI": 73,
+    "KeyJ": 74,
+    "KeyK": 75,
+    "KeyL": 76,
+    "KeyM": 77,
+    "KeyN": 78,
+    "KeyO": 79,
+    "KeyP": 80,
+    "KeyQ": 81,
+    "KeyR": 82,
+    "KeyS": 83,
+    "KeyT": 84,
+    "KeyU": 85,
+    "KeyV": 86,
+    "KeyW": 87,
+    "KeyX": 88,
+    "KeyY": 89,
+    "KeyZ": 90,
+    "MetaLeft": 91,
+    "MetaRight": 92,
+    "ContextMenu": 93,
+    "Numpad0": 96,
+    "Numpad1": 97,
+    "Numpad2": 98,
+    "Numpad3": 99,
+    "Numpad4": 100,
+    "Numpad5": 101,
+    "Numpad6": 102,
+    "Numpad7": 103,
+    "Numpad8": 104,
+    "Numpad9": 105,
+    "NumpadMultiply": 106,
+    "NumpadAdd": 107,
+    "NumpadSubtract": 109,
+    "NumpadDecimal": 110,
+    "NumpadDivide": 111,
+    "F1": 112,
+    "F2": 113,
+    "F3": 114,
+    "F4": 115,
+    "F5": 116,
+    "F6": 117,
+    "F7": 118,
+    "F8": 119,
+    "F9": 120,
+    "F10": 121,
+    "F11": 122,
+    "F12": 123,
+    "NumLock": 144,
+    "ScrollLock": 145,
+    "AudioVolumeMute": 173,
+    "AudioVolumeDown": 174,
+    "AudioVolumeUp": 175,
+    "LaunchMediaPlayer": 181,
+    "LaunchApplication1": 182,
+    "LaunchApplication2": 183,
+    "Semicolon": 186,
+    "Equal": 187,
+    "Comma": 188,
+    "Minus": 189,
+    "Period": 190,
+    "Slash": 191,
+    "Backquote": 192,
+    "BracketLeft": 219,
+    "Backslash": 220,
+    "BracketRight": 221,
+    "Quote": 222
+};
 
+function getOuterHTML(win, selector) {
+    var doc = win.dev.DOM.getDocument();
+    var e = win.dev.DOM.querySelector({
+        nodeId: doc.root.nodeId,
+        selector: selector
+    });
+
+    var html = win.dev.DOM.getOuterHTML({
+        nodeId: e.nodeId
+    });
+
+    return html.outerHTML;
+}
+
+function click(win, selector) {
+    var doc = win.dev.DOM.getDocument();
+    var e = win.dev.DOM.querySelector({
+        nodeId: doc.root.nodeId,
+        selector: selector
+    });
+
+    var box = win.dev.DOM.getBoxModel({
+        nodeId: e.nodeId
+    });
+
+    var mi = {
+        x: box.model.content[0] + 1,
+        y: box.model.content[1] + 1,
+        button: 'left',
+        clickCount: 1
+    }
+
+    mi.type = "mousePressed";
+    win.dev.Input.dispatchMouseEvent(mi);
+
+    mi.type = "mouseReleased";
+    win.dev.Input.dispatchMouseEvent(mi);
+}
+
+function type(win, text) {
+    for (char of text) {
+        win.dev.Input.dispatchKeyEvent({
+            type: "char",
+            text: char
+        });
+    }
+}
+
+function press(win, key) {
+    var code = key_code[key];
+    var ki = {
+        key: key,
+        code: key,
+        windowsVirtualKeyCode: code,
+        nativeVirtualKeyCode: code
+    };
+
+    ki.type = "keyDown";
+    win.dev.Input.dispatchKeyEvent(ki);
+
+    ki.type = "keyUp";
+    win.dev.Input.dispatchKeyEvent(ki);
+}
+
+describe("cef", () => {
     describe("basic", () => {
         it("basic", () => {
             var step = 0;
@@ -48,15 +222,11 @@ describe("cef", () => {
             win.on("open", () => {
                 assert.equal(step, 0);
                 step++;
-            });
-
-            win.on("load", () => {
+            }).on("load", () => {
                 assert.equal(step, 1);
                 step++;
                 win.close();
-            });
-
-            win.on("closed", () => {
+            }).on("closed", () => {
                 assert.equal(step, 2);
                 step++;
                 win = undefined;
@@ -67,6 +237,28 @@ describe("cef", () => {
 
             assert.equal(step, 3);
             assert.equal(test_util.countObject("WebView"), 0);
+        });
+
+        it("address event", done => {
+            var win = gui.open("cef://test/simple.html");
+
+            win.on("address", address => {
+                win.close();
+                done(() => {
+                    assert.equal(address, "cef://test/simple.html");
+                });
+            })
+        });
+
+        it("title event", done => {
+            var win = gui.open("cef://test/simple.html");
+
+            win.on("title", title => {
+                win.close();
+                done(() => {
+                    assert.equal(title, "simple");
+                });
+            })
         });
 
         it("close directly", () => {
@@ -120,13 +312,9 @@ describe("cef", () => {
                     });
 
                     win.close();
-
-                    try {
+                    done(() => {
                         check(info.model.width, info.model.height);
-                        done();
-                    } catch (e) {
-                        done(e);
-                    }
+                    });
                 });
             });
         }
@@ -135,8 +323,8 @@ describe("cef", () => {
             os.type() == "Linux" ? assert.equal : assert.greaterThan);
 
         test_style("no resize", {
-                resizable: false
-            },
+            resizable: false
+        },
             os.type() == "Linux" ? assert.equal : assert.greaterThan);
 
         test_style("no border", {
@@ -146,6 +334,21 @@ describe("cef", () => {
         test_style("no caption", {
             caption: false
         }, assert.equal);
+
+        test_style("maximize", {
+            maximize: true
+        }, (w, h) => {
+            assert.greaterThan(w, 120);
+            assert.greaterThan(h, 120);
+        });
+
+        test_style("fullscreen", {
+            fullscreen: true,
+            border: false
+        }, (w, h) => {
+            assert.greaterThan(w, 120);
+            assert.greaterThan(h, 120);
+        });
 
         test_style("headless", {
             headless: true
@@ -157,6 +360,7 @@ describe("cef", () => {
 
     describe("custom backend", () => {
         var opt = {
+            headless: true,
             width: 100,
             height: 100
         };
@@ -166,30 +370,18 @@ describe("cef", () => {
                 var win = gui.open(`http://cef_test/${item}.html`, opt);
 
                 win.on("load", () => {
-                    var doc = win.dev.DOM.getDocument();
-                    var e = win.dev.DOM.querySelector({
-                        nodeId: doc.root.nodeId,
-                        selector: "div"
-                    });
-
                     var html;
                     for (var i = 0; i < 10; i++) {
-                        html = win.dev.DOM.getOuterHTML({
-                            nodeId: e.nodeId
-                        });
-                        if (html.outerHTML != "<div id=\"test\"></div>")
+                        html = getOuterHTML(win, "div#test");
+                        if (html != "<div id=\"test\"></div>")
                             break;
                         coroutine.sleep(10);
                     }
 
                     win.close();
-
-                    try {
-                        assert.equal(html.outerHTML, `<div id=\"test\">${txt}</div>`);
-                        done();
-                    } catch (e) {
-                        done(e);
-                    }
+                    done(() => {
+                        assert.equal(html, `<div id=\"test\">${txt}</div>`);
+                    });
                 });
             });
         }
@@ -209,14 +401,10 @@ describe("cef", () => {
                 });
 
                 win.close();
-
-                try {
+                done(() => {
                     assert.equal(info.model.width, 400);
                     assert.equal(info.model.height, 140);
-                    done();
-                } catch (e) {
-                    done(e);
-                }
+                });
             });
         });
 
@@ -229,22 +417,114 @@ describe("cef", () => {
         test_div("post", "[application/x-www-form-urlencoded]foo=bar&amp;lorem=ipsum");
     });
 
-    it("screenshot on headless", done => {
-        var win = gui.open("cef://test/basic.html", {
-            headless: true
+    describe("devtools", () => {
+        it("screenshot on headless", done => {
+            var win = gui.open("cef://test/basic.html", {
+                headless: true
+            });
+
+            win.on("load", () => {
+                var ret = win.dev.Page.captureScreenshot({
+                    clip: {
+                        x: 0,
+                        y: 0,
+                        width: 100,
+                        height: 100,
+                        scale: 1
+                    }
+                });
+
+                win.close();
+                done(() => {
+                    var img = gd.load(encoding.base64.decode(ret.data));
+                    assert.equal(img.width, 100);
+                    assert.equal(img.height, 100);
+                    assert.equal(img.getPixel(1, 1), gd.rgb(255, 255, 255));
+                });
+            });
         });
 
-        win.on("load", () => {
-            var ret = win.dev.Page.captureScreenshot();
-            try {
-                var img = gd.load(encoding.base64.decode(ret.data));
-                assert.equal(img.getPixel(1, 1), gd.rgb(255, 255, 255));
-                done();
-            } catch (e) {
-                done(e);
-            }
+        it("devtools event", done => {
+            var win = gui.open("cef://test/basic.html", {
+                headless: true
+            });
 
-            win.close();
+            win.dev.Page.enable();
+            win.dev.Page.on("frameNavigated", ev => {
+                win.close();
+                done(() => {
+                    assert.equal(ev.frame.url, "cef://test/basic.html");
+                });
+            });
+        });
+
+        it("dispatch key/mouse event", done => {
+            var win = gui.open("cef://test/form.html", {
+                headless: true
+            });
+
+            win.on("load", () => {
+                click(win, "input#f1");
+                type(win, "hello, 这是文本。");
+
+                press(win, "ArrowLeft");
+                press(win, "ArrowLeft");
+                press(win, "ArrowLeft");
+                type(win, "测试");
+
+                click(win, "button#b1");
+
+                var html;
+                for (var i = 0; i < 10; i++) {
+                    html = getOuterHTML(win, "div#test");
+                    if (html != "<div id=\"test\"></div>")
+                        break;
+                    coroutine.sleep(10);
+                }
+
+                win.close();
+                done(() => {
+                    assert.equal(html, `<div id=\"test\">hello, 这是测试文本。</div>`);
+                });
+            });
+        });
+
+        it("FIX: screenshot with wrong clip", done => {
+            var win = gui.open("cef://test/basic.html", {
+                headless: true
+            });
+
+            win.on("load", () => {
+                done(() => {
+                    assert.throws(() => {
+                        var ret = win.dev.Page.captureScreenshot({
+                            clip: {}
+                        });
+                    })
+                    win.close();
+                });
+            });
+        });
+    });
+
+    describe("devtools & event", () => {
+        it('download', done => {
+            var win = gui.open("cef://test/download.html", {
+                download_path: __dirname,
+                download_dialog: false
+            });
+
+            win.on("download", (ev) => {
+                if (ev.status == "complete") {
+                    try {
+                        fs.unlink(__dirname + '/logo-dark.png.zip');
+                    } catch (e) { }
+
+                    done();
+                    win.close();
+                }
+            });
+
         });
     });
 });

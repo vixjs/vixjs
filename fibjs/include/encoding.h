@@ -5,22 +5,21 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "Buffer.h"
 #include "utf8.h"
 #include "ifs/encoding.h"
 #include "encoding_iconv.h"
 
-#ifndef ENCODING_H_
-#define ENCODING_H_
-
 namespace fibjs {
 
-inline void baseEncode(const char* pEncodingTable, int32_t dwBits,
-    const char* data, int32_t sz, exlib::string& retVal)
+inline void baseEncode(const char* pEncodingTable, size_t dwBits,
+    const char* data, size_t sz, exlib::string& retVal, bool fill)
 {
-    int32_t i, len = 0, bits = 0;
-    int32_t dwData = 0;
-    int32_t dwSize = 0;
+    size_t i, len = 0, bits = 0;
+    size_t dwData = 0;
+    size_t dwSize = 0;
     char bMask = 0xff >> (8 - dwBits);
 
     if (dwBits == 6)
@@ -29,6 +28,7 @@ inline void baseEncode(const char* pEncodingTable, int32_t dwBits,
         dwSize = (sz + 4) / 5 * 8;
 
     retVal.resize(dwSize);
+    char* _retVal = retVal.c_buffer();
 
     for (i = 0; i < sz; i++) {
         dwData <<= 8;
@@ -36,50 +36,37 @@ inline void baseEncode(const char* pEncodingTable, int32_t dwBits,
         bits += 8;
 
         while (bits >= dwBits) {
-            retVal[len++] = pEncodingTable[(dwData >> (bits - dwBits)) & bMask];
+            _retVal[len++] = pEncodingTable[(dwData >> (bits - dwBits)) & bMask];
             bits -= dwBits;
         }
     }
 
     if (bits)
-        retVal[len++] = pEncodingTable[(dwData << (dwBits - bits)) & bMask];
+        _retVal[len++] = pEncodingTable[(dwData << (dwBits - bits)) & bMask];
 
-    while (len < dwSize)
-        retVal[len++] = '=';
+    if (fill)
+        while (len < dwSize)
+            _retVal[len++] = '=';
 
     retVal.resize(len);
 }
 
-inline void baseEncode(const char* pEncodingTable, int32_t dwBits,
-    exlib::string& data, exlib::string& retVal)
-{
-    baseEncode(pEncodingTable, dwBits, data.c_str(),
-        (int32_t)data.length(), retVal);
-}
-
-inline void baseEncode(const char* pEncodingTable, int32_t dwBits,
-    Buffer_base* data, exlib::string& retVal)
-{
-    exlib::string strData;
-    data->toString(strData);
-    baseEncode(pEncodingTable, dwBits, strData, retVal);
-}
-
-inline void baseDecode(const char* pdecodeTable, int32_t dwBits,
+inline void baseDecode(const char* pdecodeTable, size_t dwBits,
     exlib::string& baseString, exlib::string& retVal)
 {
     const char* _baseString = baseString.c_str();
-    int32_t len = (int32_t)baseString.length();
-    int32_t nWritten = 0;
+    size_t len = baseString.length();
+    size_t nWritten = 0;
     const char* end = _baseString + len;
 
     retVal.resize(len * dwBits / 8);
+    char* _retVal = retVal.c_buffer();
 
-    int32_t dwCurr = 0;
-    int32_t nBits = 0;
-    uint32_t ch;
+    size_t dwCurr = 0;
+    size_t nBits = 0;
+    unsigned char ch;
 
-    while ((ch = utf_getchar(_baseString, end)) != 0) {
+    while ((_baseString < end) && (ch = (unsigned char)*_baseString++)) {
         int32_t nCh = (ch > 0x20 && ch < 0x80) ? pdecodeTable[ch - 0x20] : -1;
 
         if (nCh != -1) {
@@ -88,7 +75,7 @@ inline void baseDecode(const char* pdecodeTable, int32_t dwBits,
             nBits += dwBits;
 
             while (nBits >= 8) {
-                retVal[nWritten++] = (char)(dwCurr >> (nBits - 8));
+                _retVal[nWritten++] = (char)(dwCurr >> (nBits - 8));
                 nBits -= 8;
             }
         }
@@ -97,7 +84,7 @@ inline void baseDecode(const char* pdecodeTable, int32_t dwBits,
     retVal.resize(nWritten);
 }
 
-inline void baseDecode(const char* pdecodeTable, int32_t dwBits,
+inline void baseDecode(const char* pdecodeTable, size_t dwBits,
     exlib::string& baseString, obj_ptr<Buffer_base>& retVal)
 {
     exlib::string strBuf;
@@ -105,14 +92,14 @@ inline void baseDecode(const char* pdecodeTable, int32_t dwBits,
     retVal = new Buffer(strBuf);
 }
 
-inline result_t base64Encode(exlib::string data, bool url, exlib::string& retVal)
+inline result_t base64Encode(const char* data, size_t sz, bool url, exlib::string& retVal)
 {
     if (url)
         baseEncode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
-            6, data, retVal);
+            6, data, sz, retVal, false);
     else
         baseEncode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
-            6, data, retVal);
+            6, data, sz, retVal, true);
 
     return 0;
 }
@@ -135,19 +122,18 @@ inline result_t base64Decode(exlib::string data, exlib::string& retVal)
 inline result_t hexEncode(exlib::string data, exlib::string& retVal)
 {
     static char HexChar[] = "0123456789abcdef";
-    int32_t i, pos, len1;
+    size_t i;
+    size_t sz = data.length();
 
-    i = (int32_t)data.length() * 2;
-    retVal.resize(i);
+    retVal.resize(sz * 2);
+    char* _retVal = retVal.c_buffer();
+    const char* _data = data.c_str();
 
-    len1 = 0;
-    pos = 0;
+    for (i = 0; i < sz; i++) {
+        unsigned char ch = (unsigned char)_data[i];
 
-    for (i = 0; i < (int32_t)data.length(); i++) {
-        retVal[pos * 2] = HexChar[(unsigned char)data[i] >> 4];
-        retVal[pos * 2 + 1] = HexChar[(unsigned char)data[i] & 0xf];
-        pos++;
-        len1 += 2;
+        _retVal[i * 2] = HexChar[ch >> 4];
+        _retVal[i * 2 + 1] = HexChar[ch & 0xf];
     }
 
     return 0;
@@ -169,15 +155,18 @@ inline result_t commonEncode(exlib::string codec, exlib::string data, exlib::str
         if ((codec == "hex"))
             hr = hexEncode(data, retVal);
         else if ((codec == "base64"))
-            hr = base64Encode(data, false, retVal);
+            hr = base64Encode(data.c_str(), data.length(), false, retVal);
         else if ((codec == "ascii")) {
-            int32_t len, i;
+            size_t len, i;
 
-            len = (int32_t)data.length();
+            len = data.length();
             retVal.resize(len);
+
+            char* _retVal = retVal.c_buffer();
             const char* _data = data.c_str();
+
             for (i = 0; i < len; i++)
-                retVal[i] = _data[i] & 0x7f;
+                _retVal[i] = _data[i] & 0x7f;
 
             hr = 0;
         } else
@@ -187,4 +176,3 @@ inline result_t commonEncode(exlib::string codec, exlib::string data, exlib::str
 }
 
 } /* namespace fibjs */
-#endif /* ENCODING_H_ */

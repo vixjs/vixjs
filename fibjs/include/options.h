@@ -5,8 +5,7 @@
  *      Author: lion
  */
 
-#ifndef _OPTIONS_H_
-#define _OPTIONS_H_
+#pragma once
 
 #include "utils.h"
 #include "Buffer.h"
@@ -24,8 +23,9 @@ extern FILE* g_cov;
 extern bool g_tcpdump;
 extern bool g_ssldump;
 
+extern bool g_uv_socket;
+
 extern bool g_cefprocess;
-extern bool g_cefheadless;
 
 struct OptData {
     const char* name;
@@ -41,5 +41,3 @@ struct OptData {
 
 extern const OptData opt_tools[];
 }
-
-#endif

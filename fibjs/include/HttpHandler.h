@@ -5,10 +5,9 @@
  *      Author: lion
  */
 
-#include "ifs/HttpHandler.h"
+#pragma once
 
-#ifndef HTTPHANDLER_H_
-#define HTTPHANDLER_H_
+#include "ifs/HttpHandler.h"
 
 namespace fibjs {
 
@@ -30,6 +29,8 @@ public:
     virtual result_t set_maxHeadersCount(int32_t newVal);
     virtual result_t get_maxBodySize(int32_t& retVal);
     virtual result_t set_maxBodySize(int32_t newVal);
+    virtual result_t get_enableEncoding(bool& retVal);
+    virtual result_t set_enableEncoding(bool newVal);
     virtual result_t get_serverName(exlib::string& retVal);
     virtual result_t set_serverName(exlib::string newVal);
     virtual result_t get_handler(obj_ptr<Handler_base>& retVal);
@@ -42,8 +43,8 @@ private:
     exlib::string m_allowHeaders;
     int32_t m_maxHeadersCount;
     int32_t m_maxBodySize;
+    bool m_enableEncoding;
     exlib::string m_serverName;
 };
 
 } /* namespace fibjs */
-#endif /* HTTPHANDLER_H_ */

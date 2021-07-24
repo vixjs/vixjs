@@ -16,7 +16,6 @@
 #include "Url.h"
 #include "Buffer.h"
 #include "MemoryStream.h"
-#include "Stat.h"
 
 namespace fibjs {
 
@@ -1148,25 +1147,26 @@ result_t http_base::fileHandler(exlib::string root, v8::Local<v8::Object> mimes,
 
 result_t HttpFileHandler::set_mimes(v8::Local<v8::Object> mimes)
 {
-    JSArray keys = mimes->GetPropertyNames();
+    JSArray keys = mimes->GetPropertyNames(mimes->CreationContext());
     int32_t len = keys->Length();
     int32_t i;
     result_t hr;
     Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
 
     for (i = 0; i < len; i++) {
-        JSValue ks = keys->Get(i);
+        JSValue ks = keys->Get(context, i);
         JSValue v;
         exlib::string s;
 
-        v = mimes->Get(ks);
+        v = mimes->Get(context, ks);
         if (v.IsEmpty())
             return CALL_E_JAVASCRIPT;
         hr = GetArgumentValue(v, s);
         if (hr < 0)
             return CHECK_ERROR(hr);
 
-        m_mimes.insert(std::pair<exlib::string, exlib::string>(ToCString(v8::String::Utf8Value(isolate->m_isolate, ks)), s));
+        m_mimes.insert(std::pair<exlib::string, exlib::string>(isolate->toString(ks), s));
     }
 
     return 0;
@@ -1246,7 +1246,7 @@ result_t HttpFileHandler::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
             static char padding[] = "                                                              ";
             obj_ptr<Buffer_base> buf;
 
-            m_dir->get_length(length);
+            length = m_dir->length();
 
             if (m_dirPos == 0) {
                 m_dir->sort();

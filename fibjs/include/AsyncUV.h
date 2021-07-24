@@ -6,24 +6,22 @@
  * @desc general AsyncUV Item Runnin in AsyncUVLoopThread
  */
 
-#ifndef ASYNCUV_H_
-#define ASYNCUV_H_
+#pragma once
 
 #include "AsyncCall.h"
 #include <uv/include/uv.h>
 #include <functional>
 
 namespace fibjs {
-class AsyncUVTask : public AsyncEvent {
-public:
-    AsyncUVTask()
-        : AsyncEvent(NULL) {};
-    ~AsyncUVTask() {};
-};
+extern uv_loop_t* s_uv_loop;
+
+void uv_post(AsyncEvent* task);
+void uv_post(std::function<void(void)> proc);
 
 int uv_call(std::function<int(void)> proc);
-
-extern uv_loop_t* s_uv_loop;
+inline int uv_async(std::function<int(void)> proc)
+{
+    int ret = uv_call(proc);
+    return ret ? ret : CALL_E_PENDDING;
 }
-
-#endif // ASYNCUV_H_
+}

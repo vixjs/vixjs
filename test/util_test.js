@@ -149,7 +149,7 @@ describe('util', () => {
         assert.isTrue(util.isArray(new Array('with', 'some', 'entries')));
         assert.isFalse(util.isArray({}));
         assert.isFalse(util.isArray({
-            push: () => {}
+            push: () => { }
         }));
         assert.isFalse(util.isArray(/regexp/));
         assert.isFalse(util.isArray(new Error));
@@ -225,7 +225,7 @@ describe('util', () => {
     });
 
     it('isFunction', () => {
-        assert.isTrue(util.isFunction(() => {}));
+        assert.isTrue(util.isFunction(() => { }));
         assert.isFalse(util.isFunction({}));
         assert.isFalse(util.isFunction(5));
     });
@@ -267,7 +267,7 @@ describe('util', () => {
         assert.notOk(util.isPrimitive(new Date()));
         assert.notOk(util.isPrimitive([]));
         assert.notOk(util.isPrimitive(/regexp/));
-        assert.notOk(util.isPrimitive(function () {}));
+        assert.notOk(util.isPrimitive(function () { }));
         assert.notOk(util.isPrimitive(new Number(1)));
         assert.notOk(util.isPrimitive(new String('bla')));
         assert.notOk(util.isPrimitive(new Boolean(true)));
@@ -297,7 +297,7 @@ describe('util', () => {
         assert.notOk(util.isMap(Map));
         assert.notOk(util.isMap(Map.prototype));
         assert.notOk(util.isMap(new WeakMap()));
-        class AMap extends Map {}
+        class AMap extends Map { }
 
         assert.ok(util.isMap(new AMap()));
         assert.notOk(util.isMap(AMap));
@@ -313,16 +313,16 @@ describe('util', () => {
     });
 
     it('isPromise', () => {
-        var p = new Promise(() => {});
-        var p1 = () => {};
-        p1.then = () => {};
+        var p = new Promise(() => { });
+        var p1 = () => { };
+        p1.then = () => { };
 
-        var p2 = () => {};
+        var p2 = () => { };
         p2.toString = () => '[object Promise]';
 
-        class APromise extends Promise {}
+        class APromise extends Promise { }
 
-        var p3 = new Promise(() => {});
+        var p3 = new Promise(() => { });
 
         assert.ok(util.isPromise(p));
         assert.notOk(util.isPromise(Promise));
@@ -334,16 +334,16 @@ describe('util', () => {
     });
 
     it('isAsyncFunction', () => {
-        assert.isTrue(util.isAsyncFunction(async () => {}));
-        assert.isTrue(util.isAsyncFunction(async function () {}));
-        assert.isTrue(util.isAsyncFunction(async function demo() {}));
+        assert.isTrue(util.isAsyncFunction(async () => { }));
+        assert.isTrue(util.isAsyncFunction(async function () { }));
+        assert.isTrue(util.isAsyncFunction(async function demo() { }));
 
-        assert.isFalse(util.isAsyncFunction(() => {}));
-        assert.isFalse(util.isAsyncFunction(function () {}));
-        assert.isFalse(util.isAsyncFunction(function demo() {}));
+        assert.isFalse(util.isAsyncFunction(() => { }));
+        assert.isFalse(util.isAsyncFunction(function () { }));
+        assert.isFalse(util.isAsyncFunction(function demo() { }));
 
-        assert.isFalse(util.isAsyncFunction(function* () {}));
-        assert.isFalse(util.isAsyncFunction(function* demo() {}));
+        assert.isFalse(util.isAsyncFunction(function* () { }));
+        assert.isFalse(util.isAsyncFunction(function* demo() { }));
     });
 
     it('isSet', () => {
@@ -351,7 +351,7 @@ describe('util', () => {
         assert.notOk(util.isSet(Set));
         assert.notOk(util.isSet(Set.prototype));
         assert.notOk(util.isSet(new WeakSet()));
-        class ASet extends Set {}
+        class ASet extends Set { }
 
         assert.ok(util.isSet(new ASet()));
         assert.notOk(util.isSet(ASet));
@@ -414,7 +414,7 @@ describe('util', () => {
     it('has', () => {
         var obj = {
             foo: 'bar',
-            func: () => {}
+            func: () => { }
         };
         assert.ok(util.has(obj, 'foo'));
         assert.ok(!util.has(obj, 'baz'));
@@ -520,6 +520,10 @@ describe('util', () => {
             },
             b: [200]
         });
+
+        assert.throws(() => {
+            util.deepFreeze(new Buffer(10));
+        });
     });
 
     it('extend', () => {
@@ -572,7 +576,7 @@ describe('util', () => {
             util.extend(result, null, undefined, {
                 a: 1
             });
-        } catch (ex) {}
+        } catch (ex) { }
 
         assert.equal(result.a, 1, 'should not error on `null` or `undefined` sources');
 
@@ -719,6 +723,14 @@ describe('util', () => {
         assert.equal(result.length, 0);
     });
 
+    it("FIX: intersection crash when valueOf throw error", () => {
+        util.intersection([{
+            valueOf() {
+                throw new Error('error');
+            }
+        }, 0]);
+    });
+
     it("pick", () => {
         var result;
         result = util.pick({
@@ -756,7 +768,7 @@ describe('util', () => {
         assert.deepEqual(util.pick(null, 'a', 'b'), {});
         assert.deepEqual(util.pick(undefined, 'toString'), {});
 
-        var Obj = function () {};
+        var Obj = function () { };
         Obj.prototype = {
             a: 1,
             b: 2,
@@ -804,7 +816,7 @@ describe('util', () => {
         assert.deepEqual(util.omit(null, 'a', 'b'), {});
         assert.deepEqual(util.omit(undefined, 'toString'), {});
 
-        var Obj = function () {};
+        var Obj = function () { };
         Obj.prototype = {
             a: 1,
             b: 2,
@@ -847,11 +859,11 @@ describe('util', () => {
         });
         assert.equal(answers, 0);
 
-        util.each(false, () => {});
+        util.each(false, () => { });
 
         var a = [1, 2, 3];
-        assert.strictEqual(util.each(a, () => {}), a);
-        assert.strictEqual(util.each(null, () => {}), null);
+        assert.strictEqual(util.each(a, () => { }), a);
+        assert.strictEqual(util.each(null, () => { }), null);
 
         var b = [1, 2, 3];
         b.length = 100;
@@ -861,7 +873,6 @@ describe('util', () => {
         });
         assert.equal(answers, 100);
     });
-
 
     it('map', () => {
         var doubled = util.map([1, 2, 3], (num) => {
@@ -894,7 +905,7 @@ describe('util', () => {
         });
         assert.deepEqual(ids, ['1', '2']);
 
-        assert.deepEqual(util.map(null, () => {}), []);
+        assert.deepEqual(util.map(null, () => { }), []);
 
         assert.deepEqual(util.map([1], function () {
             return this.length;
@@ -916,15 +927,15 @@ describe('util', () => {
         }, 0, context);
         assert.equal(sum, 18);
 
-        assert.equal(util.reduce(null, () => {}, 138), 138);
-        assert.equal(util.reduce([], () => {}, undefined), undefined);
+        assert.equal(util.reduce(null, () => { }, 138), 138);
+        assert.equal(util.reduce([], () => { }, undefined), undefined);
 
         assert.throws(() => {
-            util.reduce([], () => {});
+            util.reduce([], () => { });
         });
 
         assert.throws(() => {
-            util.reduce(null, () => {});
+            util.reduce(null, () => { });
         });
     });
 
@@ -1011,17 +1022,87 @@ describe('util', () => {
             assert.equal(util.format(o1), '{\n  "a": 100,\n  "b": 200,\n  "c": [Circular]\n}');
         });
 
+        it("deep object", () => {
+            var data = {
+                l1: {
+                    l2_0: { a: 100 },
+                    l2: {
+                        l3: {
+                            l4:
+                            {
+                            }
+                        },
+                        l3_0: {},
+                        l3_1: [1, 2, 3, 4],
+                        l3_2: []
+                    }
+                }
+            }
+
+            assert.equal(util.format(data), '{\n  \"l1\": {\n    \"l2_0\": {\n      \"a\": 100\n    },\n    \"l2\": {\n      \"l3\": [Object],\n      \"l3_0\": {},\n      \"l3_1\": [Array],\n      \"l3_2\": []\n    }\n  }\n}');
+        });
+
+        it("huge array", () => {
+            var arr = [];
+            var txts = [];
+
+            for (var i = 0; i < 101; i++)
+                arr.push(i);
+
+            txts.push('[');
+            for (var i = 0; i < 100; i++)
+                txts.push(`  ${i},`);
+            txts.push('  1 more item');
+            txts.push(']');
+
+            assert.equal(util.format(arr), txts.join('\n'));
+
+            arr.push(i);
+            txts[101] = '  2 more items';
+
+            assert.equal(util.format(arr), txts.join('\n'));
+        });
+
+        it("huge Buffer", () => {
+            var b = Buffer.alloc(51);
+            var txts = [];
+
+            txts.push('<Buffer');
+            for (var i = 0; i < 50; i++)
+                txts.push('00');
+            txts.push('... 1 more byte>');
+
+            assert.equal(util.format(b), txts.join(' '));
+
+            var b = Buffer.alloc(52);
+            var txts = [];
+
+            txts.push('<Buffer');
+            for (var i = 0; i < 50; i++)
+                txts.push('00');
+            txts.push('... 2 more bytes>');
+
+            assert.equal(util.format(b), txts.join(' '));
+        });
+
         it("Function", () => {
-            assert.equal(util.format(() => {}), '[Function]');
+            assert.equal(util.format(() => { }), '[Function]');
 
             assert.equal(util.format([
 
-                () => {}
+                () => { }
             ]), '[\n  [Function]\n]');
 
             assert.equal(util.format({
-                a: () => {}
+                a: () => { }
             }), '{\n  "a": [Function a]\n}');
+
+            assert.equal(util.format(util.format), "[Function format]");
+        });
+
+        it("Symbol", () => {
+            assert.equal(util.format(Symbol()), 'Symbol()');
+            assert.equal(util.format(Symbol('debug')), 'Symbol(debug)');
         });
 
         it("Error", () => {
@@ -1229,7 +1310,7 @@ describe('util', () => {
                     this.callbacks = [];
                     if (this.failbacks.length > 0) this.failbacks.shift()(res, this.resolve.bind(this), this.reject.bind(this));
                 }
-                catch (fn) {
+                catch(fn) {
                     this.failbacks.push(fn);
                 }
                 then(fn) {
@@ -1265,6 +1346,89 @@ describe('util', () => {
                 util.sync(async_test1, true)(100, 200);
             });
         });
+    });
+
+    it('promisify', async () => {
+        var t = 0;
+
+        function cb_test(cb) {
+            setTimeout(function () {
+                t = 2;
+                cb(null, t);
+            }, 100);
+            t = 1;
+        }
+
+        var t1 = await util.promisify(cb_test)();
+        assert.equal(t1, 2);
+        assert.equal(t, 2);
+
+        var t2 = 0;
+        try {
+            await util.promisify((done) => {
+                done(500);
+            })();
+        } catch (e) {
+            t2 = e;
+        }
+
+        assert.equal(t2, 500);
+    });
+
+    it('callbackify', () => {
+        const values = [
+            'hello world',
+            null,
+            undefined,
+            false,
+            0,
+            {},
+            { key: 'value' },
+            Symbol('I am a symbol'),
+            function ok() { },
+            ['array', 'with', 4, 'values'],
+            new Error('boo')
+        ];
+
+        var value1;
+        var ev;
+
+        // Test that the resolution value is passed as second argument to callback
+        for (const value of values) {
+            // Test and `async function`
+            async function asyncFn() {
+                return value;
+            }
+
+            ev = new coroutine.Event();
+            value1 = undefined;
+
+            const cbAsyncFn = util.callbackify(asyncFn);
+            cbAsyncFn((err, ret) => {
+                value1 = ret;
+                ev.set();
+            });
+
+            ev.wait();
+            assert.strictEqual(value1, value);
+
+            // Test Promise factory
+            function promiseFn() {
+                return Promise.resolve(value);
+            }
+
+            ev = new coroutine.Event();
+            value1 = undefined;
+
+            const cbPromiseFn = util.callbackify(promiseFn);
+            cbPromiseFn((err, ret) => {
+                value1 = ret;
+                ev.set();
+            });
+
+            ev.wait();
+            assert.strictEqual(value1, value);
+        }
     });
 
     describe('buildInfo', () => {
@@ -1352,8 +1516,6 @@ describe('util', () => {
                 "crypto",
                 "coroutine",
                 "buffer",
-                "bson",
-                "base64vlq",
                 "base64",
                 "base32",
                 "assert"
@@ -1527,7 +1689,7 @@ describe('util', () => {
             assert.equal(c.get("a", updater), "a_value");
             assert.equal(call_num, 1);
 
-            assert.isUndefined(c.get("a1", function () {}));
+            assert.isUndefined(c.get("a1", function () { }));
             assert.isFalse(c.has("a1"));
 
             coroutine.start(() => {
@@ -1615,6 +1777,15 @@ describe('util', () => {
             assert.equal(no1, os.memoryUsage().nativeObjects.objects);
         });
     });
+
+    it("FIX: flatten a circular reference object will cause fibjs to crash", () => {
+        var arr = [100, 200];
+        arr.push(arr);
+
+        assert.throws(() => {
+            var v = util.flatten(arr);
+        });
+    })
 });
 
 require.main === module && test.run(console.DEBUG);

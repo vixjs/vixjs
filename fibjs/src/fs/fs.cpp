@@ -9,276 +9,15 @@
 #include "ifs/zip.h"
 #include "ifs/iconv.h"
 #include "path.h"
+#include "Buffer.h"
 #include "Stat.h"
 #include "File.h"
-#include "BufferedStream.h"
-#include "MemoryStream.h"
-#include "ZipFile.h"
-#include "FSWatcher.h"
-#include "StatsWatcher.h"
-
-#ifndef _WIN32
-#include <dirent.h>
-#else
-#include <stdio.h>
-#endif
+#include "AsyncUV.h"
+#include "AsyncFS.h"
 
 namespace fibjs {
 
 DECLARE_MODULE(fs);
-
-class cache_node : public obj_base {
-public:
-    exlib::string m_name;
-    date_t m_date;
-    date_t m_mtime;
-    obj_ptr<NArray> m_list;
-};
-
-static std::list<obj_ptr<cache_node>> s_cache;
-static exlib::spinlock s_cachelock;
-
-result_t fs_base::setZipFS(exlib::string fname, Buffer_base* data)
-{
-    result_t hr;
-    std::list<obj_ptr<cache_node>>::iterator it;
-    obj_ptr<ZipFile_base> zfile;
-    obj_ptr<cache_node> _node;
-
-    hr = zip_base::cc_open(data, "r", zip_base::_ZIP_DEFLATED, zfile);
-    if (hr < 0)
-        return hr;
-
-    obj_ptr<NArray> list;
-    hr = zfile->cc_readAll("", list);
-    if (hr < 0)
-        return hr;
-
-    exlib::string safe_name;
-    path_base::normalize(fname, safe_name);
-
-    _node = new cache_node();
-    _node->m_name = safe_name;
-    _node->m_list = list;
-    _node->m_date = INFINITY;
-    _node->m_mtime.now();
-
-    s_cachelock.lock();
-    for (it = s_cache.begin(); it != s_cache.end(); ++it)
-        if ((*it)->m_name == safe_name) {
-            *it = _node;
-            break;
-        }
-    if (it == s_cache.end())
-        s_cache.push_back(_node);
-    s_cachelock.unlock();
-    return 0;
-}
-
-result_t fs_base::clearZipFS(exlib::string fname)
-{
-    if (fname.empty()) {
-        s_cachelock.lock();
-        s_cache.clear();
-        s_cachelock.unlock();
-    } else {
-        std::list<obj_ptr<cache_node>>::iterator it;
-
-        exlib::string safe_name;
-        path_base::normalize(fname, safe_name);
-
-        s_cachelock.lock();
-        for (it = s_cache.begin(); it != s_cache.end(); ++it)
-            if ((*it)->m_name == safe_name) {
-                s_cache.erase(it);
-                break;
-            }
-        s_cachelock.unlock();
-    }
-
-    return 0;
-}
-
-result_t fs_base::openFile(exlib::string fname, exlib::string flags,
-    obj_ptr<SeekableStream_base>& retVal, AsyncEvent* ac)
-{
-    if (ac->isSync())
-        return CHECK_ERROR(CALL_E_NOSYNC);
-
-    exlib::string safe_name;
-    path_base::normalize(fname, safe_name);
-
-    size_t pos = safe_name.find('$');
-    if (pos != exlib::string::npos && safe_name[pos + 1] == PATH_SLASH) {
-        exlib::string zip_file = safe_name.substr(0, pos);
-        exlib::string member = safe_name.substr(pos + 2);
-        obj_ptr<ZipFile_base> zfile;
-        obj_ptr<Buffer_base> data;
-        exlib::string strData;
-        result_t hr;
-
-#ifdef _WIN32
-        bool bChanged = false;
-        exlib::string member1 = member;
-        {
-            int32_t sz = (int32_t)member1.length();
-            const char* buf = member1.c_str();
-            for (int32_t i = 0; i < sz; i++)
-                if (buf[i] == PATH_SLASH) {
-                    member[i] = '/';
-                    bChanged = true;
-                }
-        }
-#endif
-
-        obj_ptr<cache_node> _node;
-        obj_ptr<SeekableStream_base> zip_stream;
-        obj_ptr<Stat_base> stat;
-        std::list<obj_ptr<cache_node>>::iterator it;
-
-        date_t _now;
-        _now.now();
-
-        s_cachelock.lock();
-        for (it = s_cache.begin(); it != s_cache.end(); ++it)
-            if ((*it)->m_name == zip_file) {
-                _node = *it;
-                break;
-            }
-        s_cachelock.unlock();
-
-        if (_node && (_now.diff(_node->m_date) > 3000)) {
-            hr = openFile(zip_file, "r", zip_stream, ac);
-            if (hr < 0)
-                return hr;
-
-            hr = zip_stream->cc_stat(stat);
-            if (hr < 0)
-                return hr;
-
-            date_t _mtime;
-            stat->get_mtime(_mtime);
-
-            if (_mtime.diff(_node->m_mtime) != 0)
-                _node.Release();
-            else
-                _node->m_date = _now;
-        }
-
-        if (_node == NULL) {
-            if (zip_stream == NULL) {
-                hr = openFile(zip_file, "r", zip_stream, ac);
-                if (hr < 0)
-                    return hr;
-
-                hr = zip_stream->cc_stat(stat);
-                if (hr < 0)
-                    return hr;
-            }
-
-            obj_ptr<Buffer_base> zip_data;
-            hr = zip_stream->cc_readAll(zip_data);
-            if (hr < 0)
-                return hr;
-
-            hr = zip_base::cc_open(zip_data, "r", zip_base::_ZIP_DEFLATED, zfile);
-            if (hr < 0)
-                return hr;
-
-            obj_ptr<NArray> list;
-            hr = zfile->cc_readAll("", list);
-            if (hr < 0)
-                return hr;
-
-            _node = new cache_node();
-            _node->m_name = zip_file;
-            _node->m_list = list;
-            _node->m_date.now();
-            stat->get_mtime(_node->m_mtime);
-
-            s_cachelock.lock();
-            for (it = s_cache.begin(); it != s_cache.end(); ++it)
-                if ((*it)->m_name == zip_file) {
-                    *it = _node;
-                    break;
-                }
-            if (it == s_cache.end())
-                s_cache.push_back(_node);
-            s_cachelock.unlock();
-        }
-
-        int32_t len, i;
-        bool bFound = false;
-        obj_ptr<ZipFile::Info> zi;
-
-        _node->m_list->get_length(len);
-
-        for (i = 0; i < len; i++) {
-            Variant v;
-            exlib::string s;
-
-            _node->m_list->_indexed_getter(i, v);
-            zi = (ZipFile::Info*)v.object();
-
-            zi->get_filename(s);
-
-            if (member == s) {
-                bFound = true;
-                break;
-            }
-
-#ifdef _WIN32
-            if (bChanged && member1 == s) {
-                member = member1;
-                bFound = true;
-                break;
-            }
-#endif
-        }
-
-        if (!bFound)
-            return CALL_E_FILE_NOT_FOUND;
-
-        date_t _d;
-
-        zi->get_data(data);
-        if (data)
-            data->toString(strData);
-
-        zi->get_date(_d);
-        if (_d.empty())
-            _d = _node->m_date;
-
-        retVal = new MemoryStream::CloneStream(strData, _d);
-    } else {
-        if (!ac->isolate()->m_enable_FileSystem)
-            return CHECK_ERROR(CALL_E_INVALID_CALL);
-
-        obj_ptr<File> pFile = new File();
-        result_t hr;
-
-        hr = pFile->open(safe_name, flags);
-        if (hr < 0)
-            return hr;
-
-        retVal = pFile;
-    }
-
-    return 0;
-}
-
-result_t fs_base::get_constants(v8::Local<v8::Object>& retVal)
-{
-    Isolate* isolate = Isolate::current();
-    retVal = v8::Object::New(isolate->m_isolate);
-
-    retVal->Set(isolate->NewString("F_OK"), v8::Integer::New(isolate->m_isolate, F_OK));
-    retVal->Set(isolate->NewString("R_OK"), v8::Integer::New(isolate->m_isolate, R_OK));
-    retVal->Set(isolate->NewString("W_OK"), v8::Integer::New(isolate->m_isolate, W_OK));
-    retVal->Set(isolate->NewString("X_OK"), v8::Integer::New(isolate->m_isolate, X_OK));
-
-    return 0;
-}
 
 result_t fs_base::open(exlib::string fname, exlib::string flags, int32_t mode,
     int32_t& retVal, AsyncEvent* ac)
@@ -460,34 +199,6 @@ result_t fs_base::appendFile(exlib::string fname, Buffer_base* data, AsyncEvent*
     return hr;
 }
 
-result_t get_fs_stat(exlib::string fname, obj_ptr<Stat_base>& retVal, bool use_lstat = false)
-{
-    obj_ptr<Stat> pStat = new Stat();
-
-    result_t hr = !use_lstat ? pStat->getStat(fname) : pStat->getLstat(fname);
-    if (hr < 0)
-        return hr;
-
-    retVal = pStat;
-    return 0;
-}
-
-result_t fs_base::stat(exlib::string path, obj_ptr<Stat_base>& retVal, AsyncEvent* ac)
-{
-    if (ac->isSync())
-        return CHECK_ERROR(CALL_E_NOSYNC);
-
-    return get_fs_stat(path, retVal);
-}
-
-result_t fs_base::lstat(exlib::string path, obj_ptr<Stat_base>& retVal, AsyncEvent* ac)
-{
-    if (ac->isSync())
-        return CHECK_ERROR(CALL_E_NOSYNC);
-
-    return get_fs_stat(path, retVal, true);
-}
-
 result_t fs_base::read(int32_t fd, Buffer_base* buffer, int32_t offset, int32_t length,
     int32_t position, int32_t& retVal, AsyncEvent* ac)
 {
@@ -517,7 +228,7 @@ result_t fs_base::read(int32_t fd, Buffer_base* buffer, int32_t offset, int32_t 
     if (length > 0) {
         strBuf.resize(length);
         int32_t sz = length;
-        char* p = &strBuf[0];
+        char* p = strBuf.c_buffer();
 
         while (sz) {
             int32_t n = (int32_t)::_read(fd, p, sz > STREAM_BUFF_SIZE ? STREAM_BUFF_SIZE : sz);
@@ -541,142 +252,409 @@ result_t fs_base::read(int32_t fd, Buffer_base* buffer, int32_t offset, int32_t 
     return buffer->write(strBuf, offset, (int32_t)strBuf.length(), "utf8", retVal);
 }
 
-result_t fs_base::watch(exlib::string fname, obj_ptr<FSWatcher_base>& retVal)
+result_t fs_base::stat(exlib::string path, obj_ptr<Stat_base>& retVal, AsyncEvent* ac)
 {
-    return watch(fname, v8::Local<v8::Function>(), retVal);
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_stat(s_uv_loop, new AsyncUVFSResult<obj_ptr<Stat_base>>(retVal, ac), path.c_str(),
+            AsyncUVFSResult<obj_ptr<Stat_base>>::callback);
+    });
 }
 
-result_t fs_base::watch(exlib::string fname, v8::Local<v8::Function> callback, obj_ptr<FSWatcher_base>& retVal)
+result_t fs_base::lstat(exlib::string path, obj_ptr<Stat_base>& retVal, AsyncEvent* ac)
 {
-    Isolate* isolate = Isolate::current();
-    v8::Local<v8::Object> opts = v8::Object::New(isolate->m_isolate);
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
 
-    return watch(fname, opts, callback, retVal);
+    return uv_async([&] {
+        return uv_fs_lstat(s_uv_loop, new AsyncUVFSResult<obj_ptr<Stat_base>>(retVal, ac), path.c_str(),
+            AsyncUVFSResult<obj_ptr<Stat_base>>::callback);
+    });
 }
 
-result_t fs_base::watch(exlib::string fname, v8::Local<v8::Object> options, obj_ptr<FSWatcher_base>& retVal)
+result_t fs_base::exists(exlib::string path, bool& retVal, AsyncEvent* ac)
 {
-    return watch(fname, options, v8::Local<v8::Function>(), retVal);
+    class AsyncUVFSStatue : public uv_fs_t {
+    public:
+        AsyncUVFSStatue(bool& retVal, AsyncEvent* ac)
+            : m_retVal(retVal)
+            , m_ac(ac)
+        {
+        }
+
+        ~AsyncUVFSStatue()
+        {
+            uv_fs_req_cleanup(this);
+        }
+
+    public:
+        static void callback(uv_fs_t* req)
+        {
+            AsyncUVFSStatue* pThis = (AsyncUVFSStatue*)req;
+
+            pThis->m_retVal = (int32_t)uv_fs_get_result(req) == 0;
+            pThis->m_ac->apost(0);
+
+            delete pThis;
+        }
+
+    private:
+        bool& m_retVal;
+        AsyncEvent* m_ac;
+    };
+
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_access(s_uv_loop, new AsyncUVFSStatue(retVal, ac), path.c_str(), F_OK, AsyncUVFSStatue::callback);
+    });
 }
 
-result_t get_safe_abs_path(exlib::string fname, exlib::string& safe_name)
+result_t fs_base::access(exlib::string path, int32_t mode, AsyncEvent* ac)
 {
-    result_t hr = 0;
-    path_base::normalize(fname, safe_name);
-    bool is_abs;
-    path_base::isAbsolute(safe_name, is_abs);
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
 
-    if (!is_abs)
-        hr = _resolve(safe_name);
-
-    return hr;
+    return uv_async([&] {
+        return uv_fs_access(s_uv_loop, new AsyncUVFS(ac), path.c_str(), mode, AsyncUVFS::callback);
+    });
 }
 
-result_t fs_base::watch(exlib::string fname, v8::Local<v8::Object> options, v8::Local<v8::Function> callback, obj_ptr<FSWatcher_base>& retVal)
+result_t fs_base::link(exlib::string oldPath, exlib::string newPath, AsyncEvent* ac)
 {
-    result_t hr;
-    exlib::string safe_name;
-    if ((hr = get_safe_abs_path(fname, safe_name)) < 0)
-        return 0;
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
 
-    Isolate* isolate = Isolate::current();
-    bool persistent = true;
-    hr = GetConfigValue(isolate->m_isolate, options, "persistent", persistent, true);
-    if (hr < 0 && hr != CALL_E_PARAMNOTOPTIONAL)
-        return hr;
-
-    bool recursive = false;
-    hr = GetConfigValue(isolate->m_isolate, options, "recursive", recursive, true);
-    if (hr < 0 && hr != CALL_E_PARAMNOTOPTIONAL)
-        return hr;
-
-    obj_ptr<FSWatcher> pFW = new FSWatcher(safe_name, callback, persistent, recursive);
-    retVal = pFW;
-
-    pFW->start();
-
-    return 0;
+    return uv_async([&] {
+        return uv_fs_link(s_uv_loop, new AsyncUVFS(ac), oldPath.c_str(), newPath.c_str(), AsyncUVFS::callback);
+    });
 }
 
-result_t fs_base::watchFile(exlib::string fname, v8::Local<v8::Function> callback, obj_ptr<StatsWatcher_base>& retVal)
+result_t fs_base::unlink(exlib::string path, AsyncEvent* ac)
 {
-    Isolate* isolate = Isolate::current();
-    v8::Local<v8::Object> opts = v8::Object::New(isolate->m_isolate);
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
 
-    return watchFile(fname, opts, callback, retVal);
+    return uv_async([&] {
+        return uv_fs_unlink(s_uv_loop, new AsyncUVFS(ac), path.c_str(), AsyncUVFS::callback);
+    });
 }
 
-result_t fs_base::watchFile(exlib::string fname, v8::Local<v8::Object> options, v8::Local<v8::Function> callback, obj_ptr<StatsWatcher_base>& retVal)
+result_t fs_base::symlink(exlib::string target, exlib::string linkpath, exlib::string type, AsyncEvent* ac)
 {
-    result_t hr;
-    exlib::string safe_name;
-    if ((hr = get_safe_abs_path(fname, safe_name)) < 0)
-        return 0;
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
 
-    obj_ptr<StatsWatcher> pSW = StatsWatcher::getTargetWatcher(safe_name);
-    if (pSW == NULL) {
+    return uv_async([&] {
+        int _type = 0;
+
+        if (type == "dir")
+            _type = 1;
+        else if (type == "junction")
+            _type = 2;
+        return uv_fs_symlink(s_uv_loop, new AsyncUVFS(ac), target.c_str(), linkpath.c_str(), _type, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::readlink(exlib::string path, exlib::string& retVal, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_readlink(s_uv_loop, new AsyncUVFSResult<exlib::string>(retVal, ac), path.c_str(),
+            AsyncUVFSResult<exlib::string>::callback);
+    });
+}
+
+result_t fs_base::realpath(exlib::string path, exlib::string& retVal, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_realpath(s_uv_loop, new AsyncUVFSResult<exlib::string>(retVal, ac), path.c_str(),
+            AsyncUVFSResult<exlib::string>::callback);
+    });
+}
+
+result_t fs_base::mkdir(exlib::string path, int32_t mode, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_mkdir(s_uv_loop, new AsyncUVFS(ac), path.c_str(), mode, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::mkdir(exlib::string path, v8::Local<v8::Object> opt, AsyncEvent* ac)
+{
+    class AsyncUVMKDir : public uv_fs_t {
+    public:
+        AsyncUVMKDir(exlib::string path, int32_t mode, AsyncEvent* ac)
+            : m_ac(ac)
+            , m_path(path)
+            , m_mode(mode)
+        {
+        }
+
+        ~AsyncUVMKDir()
+        {
+            uv_fs_req_cleanup(this);
+        }
+
+    public:
+        static void cb_stat(uv_fs_t* req)
+        {
+            AsyncUVMKDir* pThis = (AsyncUVMKDir*)req;
+
+            int32_t ret = (int32_t)uv_fs_get_result(req);
+            if (ret < 0 || !(S_IFDIR & pThis->statbuf.st_mode)) {
+                pThis->m_ac->apost(pThis->m_last_err);
+                delete pThis;
+                return;
+            }
+
+            pThis->result = 0;
+            cb_mkdir(req);
+        }
+
+        static void cb_mkdir(uv_fs_t* req)
+        {
+            AsyncUVMKDir* pThis = (AsyncUVMKDir*)req;
+
+            int32_t ret = (int32_t)uv_fs_get_result(req);
+            switch (ret) {
+            case 0:
+                if (pThis->m_paths.size() == 0) {
+                    pThis->m_ac->apost(0);
+                    delete pThis;
+                    return;
+                }
+
+                pThis->m_path = pThis->m_paths.back();
+                pThis->m_paths.pop_back();
+                break;
+            case UV_EACCES:
+            case UV_ENOTDIR:
+            case UV_EPERM:
+                pThis->m_ac->apost(ret);
+                delete pThis;
+                return;
+            case UV_ENOENT:
+                pThis->m_paths.push_back(pThis->m_path);
+                os_dirname(pThis->m_path, pThis->m_path);
+                break;
+            default:
+                pThis->m_last_err = ret;
+                uv_fs_req_cleanup(pThis);
+                ret = uv_fs_stat(s_uv_loop, pThis, pThis->m_path.c_str(), cb_stat);
+                if (ret != 0) {
+                    pThis->m_ac->apost(pThis->m_last_err);
+                    delete pThis;
+                }
+                return;
+            };
+
+            uv_fs_req_cleanup(pThis);
+            ret = uv_fs_mkdir(s_uv_loop, pThis, pThis->m_path.c_str(), pThis->m_mode, AsyncUVMKDir::cb_mkdir);
+            if (ret != 0) {
+                pThis->m_ac->apost(ret);
+                delete pThis;
+            }
+        }
+
+    private:
+        AsyncEvent* m_ac;
+        exlib::string m_path;
+        int32_t m_mode;
+        std::vector<exlib::string> m_paths;
+        int32_t m_last_err;
+    };
+
+    if (ac->isSync()) {
         Isolate* isolate = Isolate::current();
-        bool persistent = true;
-        hr = GetConfigValue(isolate->m_isolate, options, "persistent", persistent, true);
-        if (hr < 0 && hr != CALL_E_PARAMNOTOPTIONAL)
-            return hr;
 
-        bool useBigInt = false;
-        hr = GetConfigValue(isolate->m_isolate, options, "bigint", useBigInt, true);
-        if (hr < 0 && hr != CALL_E_PARAMNOTOPTIONAL)
-            return hr;
+        ac->m_ctx.resize(2);
 
-        int32_t interval = DEFAULT_STATS_WATCH_INTERVAL;
-        hr = GetConfigValue(isolate->m_isolate, options, "interval", interval, true);
-        if (hr < 0 && hr != CALL_E_PARAMNOTOPTIONAL)
-            return hr;
+        bool recursive = false;
+        GetConfigValue(isolate->m_isolate, opt, "recursive", recursive);
+        ac->m_ctx[0] = recursive;
 
-        pSW = new StatsWatcher(safe_name, persistent, interval, useBigInt);
-        retVal = pSW;
+        int32_t mode = 0777;
+        GetConfigValue(isolate->m_isolate, opt, "mode", mode);
+        ac->m_ctx[1] = mode;
 
-        hr = pSW->start();
-
-        if (hr < 0)
-            return hr;
+        return CHECK_ERROR(CALL_E_NOSYNC);
     }
 
-    pSW->bindChangeHandler(callback);
+    bool recursive = ac->m_ctx[0].boolVal();
+    int32_t mode = ac->m_ctx[1].intVal();
 
-    retVal = pSW;
+    if (!recursive)
+        return mkdir(path, mode, ac);
 
-    return hr;
+    os_resolve(path);
+
+    return uv_async([&] {
+        return uv_fs_mkdir(s_uv_loop, new AsyncUVMKDir(path, mode, ac), path.c_str(), mode, AsyncUVMKDir::cb_mkdir);
+    });
 }
 
-result_t fs_base::unwatchFile(exlib::string fname)
+result_t fs_base::rmdir(exlib::string path, AsyncEvent* ac)
 {
-    result_t hr;
-    exlib::string safe_name;
-    if ((hr = get_safe_abs_path(fname, safe_name)) < 0)
-        return 0;
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
 
-    obj_ptr<StatsWatcher> pSW = StatsWatcher::getTargetWatcher(safe_name);
-    if (pSW == NULL)
-        return 0;
-
-    pSW->removeChangeHandler();
-
-    return 0;
+    return uv_async([&] {
+        return uv_fs_rmdir(s_uv_loop, new AsyncUVFS(ac), path.c_str(), AsyncUVFS::callback);
+    });
 }
 
-result_t fs_base::unwatchFile(exlib::string fname, v8::Local<v8::Function> callback)
+result_t fs_base::fchmod(int32_t fd, int32_t mode, AsyncEvent* ac)
 {
-    result_t hr;
-    exlib::string safe_name;
-    if ((hr = get_safe_abs_path(fname, safe_name)) < 0)
-        return 0;
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
 
-    obj_ptr<StatsWatcher> pSW = StatsWatcher::getTargetWatcher(safe_name);
-    if (pSW == NULL)
-        return 0;
-
-    pSW->removeChangeHandler(callback);
-
-    return 0;
+    return uv_async([&] {
+        return uv_fs_fchmod(s_uv_loop, new AsyncUVFS(ac), fd, mode, AsyncUVFS::callback);
+    });
 }
 
+result_t fs_base::fchown(int32_t fd, int32_t uid, int32_t gid, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_fchown(s_uv_loop, new AsyncUVFS(ac), fd, uid, gid, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::fsync(int32_t fd, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_fsync(s_uv_loop, new AsyncUVFS(ac), fd, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::chmod(exlib::string path, int32_t mode, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_chmod(s_uv_loop, new AsyncUVFS(ac), path.c_str(), mode, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::chown(exlib::string path, int32_t uid, int32_t gid, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_chown(s_uv_loop, new AsyncUVFS(ac), path.c_str(), uid, gid, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::lchown(exlib::string path, int32_t uid, int32_t gid, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_lchown(s_uv_loop, new AsyncUVFS(ac), path.c_str(), uid, gid, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::rename(exlib::string from, exlib::string to, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_rename(s_uv_loop, new AsyncUVFS(ac), from.c_str(), to.c_str(), AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::fdatasync(int32_t fd, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_fdatasync(s_uv_loop, new AsyncUVFS(ac), fd, AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::copyFile(exlib::string from, exlib::string to, int32_t mode, AsyncEvent* ac)
+{
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_copyfile(s_uv_loop, new AsyncUVFS(ac), from.c_str(), to.c_str(), mode,
+            AsyncUVFS::callback);
+    });
+}
+
+result_t fs_base::readdir(exlib::string path, obj_ptr<NArray>& retVal, AsyncEvent* ac)
+{
+    class AsyncUVFSReadDir : public uv_fs_t {
+    public:
+        AsyncUVFSReadDir(obj_ptr<NArray>& retVal, AsyncEvent* ac)
+            : m_retVal(retVal)
+            , m_ac(ac)
+        {
+        }
+
+        ~AsyncUVFSReadDir()
+        {
+            uv_fs_req_cleanup(this);
+        }
+
+    public:
+        static void callback(uv_fs_t* req)
+        {
+            AsyncUVFSReadDir* pThis = (AsyncUVFSReadDir*)req;
+
+            int32_t ret = (int32_t)uv_fs_get_result(req);
+            if (ret < 0) {
+                pThis->m_ac->apost(ret);
+                delete pThis;
+                return;
+            }
+
+            obj_ptr<NArray> oa = new NArray();
+            while (uv_fs_scandir_next(req, &pThis->m_dirent) != UV_EOF)
+                oa->append(pThis->m_dirent.name);
+
+            pThis->m_retVal = oa;
+
+            pThis->m_ac->apost(0);
+            delete pThis;
+        }
+
+    private:
+        obj_ptr<NArray>& m_retVal;
+        AsyncEvent* m_ac;
+        uv_dirent_t m_dirent;
+    };
+
+    if (ac->isSync())
+        return CHECK_ERROR(CALL_E_NOSYNC);
+
+    return uv_async([&] {
+        return uv_fs_scandir(s_uv_loop, new AsyncUVFSReadDir(retVal, ac), path.c_str(), 0,
+            AsyncUVFSReadDir::callback);
+    });
+}
 }

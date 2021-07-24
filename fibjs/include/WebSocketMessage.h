@@ -5,12 +5,11 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "Message.h"
 #include "ifs/WebSocketMessage.h"
 #include "WebSocket.h"
-
-#ifndef WEBSOCKETMESSAGE_H_
-#define WEBSOCKETMESSAGE_H_
 
 namespace fibjs {
 
@@ -22,7 +21,7 @@ public:
         , m_maxSize(maxSize)
         , m_error(0)
     {
-        if (type != ws_base::_TEXT && type != ws_base::_BINARY)
+        if (type != ws_base::C_TEXT && type != ws_base::C_BINARY)
             m_compress = false;
 
         m_message = new Message();
@@ -82,4 +81,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* WEBSOCKETMESSAGE_H_ */

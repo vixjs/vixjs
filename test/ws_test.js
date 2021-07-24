@@ -331,7 +331,7 @@ describe('ws', () => {
                 });
 
                 assert.equal(rep.statusCode, 101);
-                assert.equal(rep.firstHeader("Sec-WebSocket-Extensions"), "permessage-deflate");
+                assert.equal(rep.firstHeader("Sec-WebSocket-Extensions"), null);
                 rep.socket.close();
 
                 var rep = http.get("http://127.0.0.1:" + (8813 + base_port) + "/ws", {
@@ -345,7 +345,7 @@ describe('ws', () => {
                 });
 
                 assert.equal(rep.statusCode, 101);
-                assert.equal(rep.firstHeader("Sec-WebSocket-Extensions"), "permessage-deflate");
+                assert.equal(rep.firstHeader("Sec-WebSocket-Extensions"), null);
                 rep.socket.close();
             });
         });
@@ -487,13 +487,15 @@ describe('ws', () => {
                     return req.end();
                 }
             }, {
-                "/ws": ws.upgrade((s, req) => {
+                "/ws": ws.upgrade({
+                    perMessageDeflate: true
+                }, (s, req) => {
                     assert.equal(req.firstHeader("upgrade"), "websocket");
                     s.onmessage = function (msg) {
                         if (msg.data === "perMessageDeflate")
-                            assert.isFalse(msg.compress);
-                        else
                             assert.isTrue(msg.compress);
+                        else
+                            assert.isFalse(msg.compress);
 
                         if (msg.data === "Going Away")
                             msg.stream.close();
@@ -558,7 +560,7 @@ describe('ws', () => {
             };
 
             s.onmessage = (m) => {
-                assert.isTrue(m.compress);
+                assert.isFalse(m.compress);
                 msg = m;
                 t = true;
             };
@@ -595,7 +597,12 @@ describe('ws', () => {
                 opened = true;
                 s.close();
             };
-            coroutine.sleep(100);
+
+            for (var i = 0; i < 1000 && !opened; i++) {
+                console.log(opened);
+                coroutine.sleep(5);
+            }
+
             assert.equal(s.readyState, ws.CLOSED);
             assert.isTrue(opened);
 
@@ -607,14 +614,17 @@ describe('ws', () => {
             });
             assert.equal(s1.url, "ws://127.0.0.1:" + (8814 + base_port) + "/ws");
             assert.equal(s1.protocol, "test");
-            opened = false;
-            s1.onopen = () => {
-                opened = true;
+            var errored = false;
+            s1.onerror = () => {
+                errored = true;
                 s1.close();
             };
-            coroutine.sleep(100);
+
+            for (var i = 0; i < 1000 && !errored; i++)
+                coroutine.sleep(5);
+
             assert.equal(s1.readyState, ws.CLOSED);
-            assert.isFalse(opened);
+            assert.isTrue(errored);
         });
 
         it("specialize httpClient", () => {
@@ -691,14 +701,14 @@ describe('ws', () => {
             var t = false;
             var msg;
             var s = new ws.Socket("ws://127.0.0.1:" + (8814 + base_port) + "/ws", {
-                perMessageDeflate: false
+                perMessageDeflate: true
             });
             s.onopen = () => {
                 s.send('perMessageDeflate');
             };
 
             s.onmessage = (m) => {
-                assert.isFalse(m.compress);
+                assert.isTrue(m.compress);
                 msg = m;
                 t = true;
             };
@@ -714,7 +724,7 @@ describe('ws', () => {
         it('upgrade perMessageDeflate', () => {
             var httpd = new http.Server(8819 + base_port, {
                 "/ws": ws.upgrade({
-                    perMessageDeflate: false
+                    perMessageDeflate: true
                 }, (s) => {
                     s.on("message", function (msg) {
                         assert.isFalse(msg.compress);
@@ -807,7 +817,7 @@ describe('ws', () => {
             };
 
             for (var i = 0; i < 1000 && !tc; i++)
-                coroutine.sleep(1);
+                coroutine.sleep(5);
 
             assert.isTrue(tc);
             assert.equal(s.readyState, ws.CLOSED);
@@ -829,7 +839,7 @@ describe('ws', () => {
             };
 
             for (var i = 0; i < 1000 && !tc; i++)
-                coroutine.sleep(1);
+                coroutine.sleep(5);
 
             assert.isTrue(tc);
             assert.equal(s.readyState, ws.CLOSED);
@@ -855,7 +865,7 @@ describe('ws', () => {
             };
 
             for (var i = 0; i < 1000 && !tc; i++)
-                coroutine.sleep(1);
+                coroutine.sleep(5);
 
             assert.isTrue(te);
             assert.isTrue(tc);
@@ -912,7 +922,7 @@ describe('ws', () => {
                 };
 
                 for (var i = 0; i < 1000 && !tc; i++)
-                    coroutine.sleep(1);
+                    coroutine.sleep(5);
 
                 assert.isFalse(t);
                 assert.isTrue(te);
@@ -945,7 +955,7 @@ describe('ws', () => {
                 };
 
                 for (var i = 0; i < 1000 && !tc; i++)
-                    coroutine.sleep(1);
+                    coroutine.sleep(5);
 
                 assert.isFalse(t);
                 assert.isTrue(te);
@@ -963,7 +973,7 @@ describe('ws', () => {
                 var no1 = test_util.countObject('WebSocket');
                 var httpd = new http.Server(8816 + base_port, {
                     "/ws": ws.upgrade((s, req) => {
-                        s.onmessage = e => {}
+                        s.onmessage = e => { }
                     })
                 });
 
@@ -978,7 +988,7 @@ describe('ws', () => {
                     t = true;
                 };
 
-                s.onmessage = e => {}
+                s.onmessage = e => { }
 
                 for (var i = 0; i < 1000 && !t; i++)
                     coroutine.sleep(1);
@@ -988,7 +998,7 @@ describe('ws', () => {
 
                 s = undefined;
                 test_util.gc();
-                coroutine.sleep(10);
+                coroutine.sleep(5);
                 test_util.gc();
                 assert.equal(test_util.countObject('WebSocket'), no1);
             });
@@ -1040,7 +1050,7 @@ describe('ws', () => {
                 test_util.gc();
 
                 var httpd = new http.Server(8818 + base_port, {
-                    "/ws": ws.upgrade((s, req) => {})
+                    "/ws": ws.upgrade((s, req) => { })
                 });
 
                 test_util.push(httpd.socket);

@@ -88,15 +88,17 @@ void JSFiber::set_caller(Fiber_base* caller)
     if (m_caller) {
         v8::Local<v8::Object> co = m_caller->wrap();
         v8::Local<v8::Object> o = wrap();
+        v8::Local<v8::Context> context = co->CreationContext();
 
-        v8::Local<v8::Array> ks = co->GetOwnPropertyNames();
+        v8::Local<v8::Array> ks;
+        co->GetOwnPropertyNames(context).ToLocal(&ks);
         int32_t len = ks->Length();
 
         int32_t i;
 
         for (i = 0; i < len; i++) {
-            JSValue k = ks->Get(i);
-            o->Set(k, JSValue(co->Get(k)));
+            JSValue k = ks->Get(context, i);
+            o->Set(context, k, JSValue(co->Get(context, k)));
         }
     }
 }
@@ -110,7 +112,7 @@ void JSFiber::start()
 {
     Ref();
     set_caller(JSFiber::current());
-    requestIsolateRun(holder(), sync_invoke, this);
+    syncCall(holder(), sync_invoke, this);
 }
 
 result_t JSFiber::join()
@@ -202,7 +204,7 @@ result_t JSFiber::js_invoke()
 
     clear();
 
-    retVal = func->Call(pThis, (int32_t)argv.size(), argv.data());
+    func->Call(func->CreationContext(), pThis, (int32_t)argv.size(), argv.data()).ToLocal(&retVal);
 
     if (!IsEmpty(retVal))
         m_result.Reset(isolate->m_isolate, retVal);

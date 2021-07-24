@@ -5,11 +5,11 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/ChildProcess.h"
 #include "AsyncUV.h"
-
-#ifndef _CHILDPROCESS_H
-#define _CHILDPROCESS_H
+#include "UVStream.h"
 
 namespace fibjs {
 
@@ -17,6 +17,7 @@ class ChildProcess : public ChildProcess_base {
 public:
     ChildProcess()
         : m_exitCode(-1)
+        , m_pty(false)
     {
         memset(&uv_options, 0, sizeof(uv_process_options_t));
         uv_options.exit_cb = OnExit;
@@ -56,11 +57,13 @@ public:
     exlib::Event m_ev;
     obj_ptr<ValueHolder> m_vholder;
 
-    obj_ptr<Stream_base> m_stdio[3];
+    obj_ptr<UVStream> m_stdio[3];
 
     uv_stdio_container_t stdios[3];
     uv_process_options_t uv_options;
     uv_process_t m_process;
+
+    bool m_pty;
 
     int32_t m_exitCode;
 
@@ -75,5 +78,3 @@ public:
     exlib::string cwd;
 };
 }
-
-#endif // _CHILDPROCESS_H

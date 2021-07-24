@@ -111,7 +111,7 @@ void file_logger::clearFile()
     std::vector<exlib::string> files;
     int32_t sz = 0, i;
 
-    fd->get_length(sz);
+    sz = fd->length();
 
     for (i = 0; i < sz; i++) {
         Variant v;
@@ -211,7 +211,7 @@ result_t file_logger::write(AsyncEvent* ac)
         }
 
         while ((p1 = m_workinglogs.getHead()) != 0) {
-            if (p1->m_priority != console_base::_PRINT) {
+            if (p1->m_priority != console_base::C_PRINT) {
                 outBuffer.append(p1->full());
                 outBuffer.append("\n", 1);
             }

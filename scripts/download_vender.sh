@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-. vender/scripts/get_env.sh --source-only
+. vender/build_tools/scripts/get_env.sh --source-only
 
 get_build_env;
 
@@ -43,7 +43,7 @@ cd $FIBJS_DIR
 mkdir -p $BIN_DIR
 cd $BIN_DIR;
 if [ ! -e $BIN_DIR/$VENDER_ASSETS_FILE ]; then
-    ASSET_URL=https://github.com/richardo2016/fibjs_vender/releases/download/$LATEST_VENDER_TAG/$VENDER_ASSETS_FILE
+    ASSET_URL=https://github.com/fibjs/fibjs_vender/releases/download/$LATEST_VENDER_TAG/$VENDER_ASSETS_FILE
     echo "starting download vender from $ASSET_URL"
     curl -sL $ASSET_URL -o $BIN_DIR/$VENDER_ASSETS_FILE
     ls -la ./;

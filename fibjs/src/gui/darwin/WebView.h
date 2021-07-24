@@ -5,10 +5,9 @@
  * @modify date 2018-04-23 03:25:42
  * @desc WebView Object for Mac OSX
  */
-#if defined(__APPLE__) && !defined(VIXJS_DISABLE_GUI)
+#if defined(__APPLE__) && !defined(FIBJS_DISABLE_GUI)
 
-#ifndef WEBVIEW_APPLE_H_
-#define WEBVIEW_APPLE_H_
+#pragma once
 
 #include "ifs/WebView.h"
 #include "EventInfo.h"
@@ -40,15 +39,19 @@ public:
     virtual result_t executeDevToolsMethod(exlib::string method, v8::Local<v8::Object> params, Variant& retVal, AsyncEvent* ac);
     virtual result_t close(AsyncEvent* ac);
     virtual result_t postMessage(exlib::string msg, AsyncEvent* ac);
+    virtual result_t get_type(exlib::string& retVal);
     virtual result_t get_dev(v8::Local<v8::Value>& retVal);
 
 public:
     EVENT_FUNC(open);
     EVENT_FUNC(load);
+    EVENT_FUNC(address);
+    EVENT_FUNC(title);
     EVENT_FUNC(move);
     EVENT_FUNC(resize);
     EVENT_FUNC(closed);
     EVENT_FUNC(message);
+    EVENT_FUNC(download);
 
 public:
     // async call handler & real executation.
@@ -126,5 +129,4 @@ protected:
 };
 } /* namespace fibjs */
 
-#endif /* WEBVIEW_APPLE_H_ */
 #endif /* __APPLE__ */

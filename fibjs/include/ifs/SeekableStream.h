@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _SeekableStream_base_H_
-#define _SeekableStream_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -104,7 +103,7 @@ inline void SeekableStream_base::s_seek(const v8::FunctionCallbackInfo<v8::Value
     METHOD_OVER(2, 1);
 
     ARG(int64_t, 0);
-    OPT_ARG(int32_t, 1, fs_base::_SEEK_SET);
+    OPT_ARG(int32_t, 1, fs_base::C_SEEK_SET);
 
     hr = pInst->seek(v0, v1);
 
@@ -223,5 +222,3 @@ inline void SeekableStream_base::s_stat(const v8::FunctionCallbackInfo<v8::Value
     METHOD_RETURN();
 }
 }
-
-#endif

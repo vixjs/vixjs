@@ -14,6 +14,7 @@
 #include "ifs/net.h"
 #include "ifs/zlib.h"
 #include "ifs/json.h"
+#include "ifs/msgpack.h"
 #include "ifs/querystring.h"
 #include <string.h>
 
@@ -191,7 +192,7 @@ result_t HttpClient::get_sslVerification(int32_t& retVal)
 
 result_t HttpClient::set_sslVerification(int32_t newVal)
 {
-    if (newVal < ssl_base::_VERIFY_NONE || newVal > ssl_base::_VERIFY_REQUIRED)
+    if (newVal < ssl_base::C_VERIFY_NONE || newVal > ssl_base::C_VERIFY_REQUIRED)
         return CHECK_ERROR(CALL_E_INVALIDARG);
 
     m_sslVerification = newVal;
@@ -205,7 +206,7 @@ result_t HttpClient::update(HttpCookie_base* cookie)
     bool b = false, b1 = false;
     date_t t, t1;
 
-    m_cookies->get_length(length);
+    length = m_cookies->length();
     if (length == 0)
         return 0;
 
@@ -271,7 +272,7 @@ result_t HttpClient::update_cookies(exlib::string url, NArray* cookies)
 
     m_lock.lock();
 
-    cookies->get_length(length);
+    length = cookies->length();
     if (length == 0) {
         m_lock.unlock();
         return 0;
@@ -317,7 +318,7 @@ result_t HttpClient::get_cookie(exlib::string url, exlib::string& retVal)
         return hr;
 
     m_lock.lock();
-    m_cookies->get_length(length);
+    length = m_cookies->length();
     if (length == 0) {
         m_lock.unlock();
         return 0;
@@ -494,6 +495,7 @@ result_t HttpClient::request(exlib::string method, exlib::string url, SeekableSt
         {
             result_t hr;
             bool ssl = false;
+            bool _domain = false;
 
             m_urls[m_url] = true;
 
@@ -508,9 +510,13 @@ result_t HttpClient::request(exlib::string method, exlib::string url, SeekableSt
             if (u->m_protocol == "https:") {
                 ssl = true;
                 m_connUrl = "ssl://";
-            } else if (u->m_protocol == "http:")
-                m_connUrl = "tcp://";
-            else
+            } else if (u->m_protocol == "http:") {
+                if (u->m_host[0] == '/') {
+                    _domain = true;
+                    m_connUrl = "unix:";
+                } else
+                    m_connUrl = "tcp://";
+            } else
                 return CHECK_ERROR(Runtime::setError("HttpClient: unknown protocol"));
 
             if (u->m_host.empty())
@@ -518,7 +524,7 @@ result_t HttpClient::request(exlib::string method, exlib::string url, SeekableSt
 
             m_connUrl.append(u->m_host);
 
-            if (u->m_port.empty())
+            if (!_domain && u->m_port.empty())
                 m_connUrl.append(ssl ? ":443" : ":80");
 
             m_req = new HttpRequest();
@@ -714,7 +720,7 @@ result_t HttpClient::request(exlib::string method, exlib::string url, SeekableSt
             m_url = location;
 
             if (m_response_body)
-                m_response_body->seek(m_response_pos, fs_base::_SEEK_SET);
+                m_response_body->seek(m_response_pos, fs_base::C_SEEK_SET);
 
             return next(prepare);
         }
@@ -759,11 +765,12 @@ result_t HttpClient::request(exlib::string method, exlib::string url,
     v8::Local<v8::Object> opts, obj_ptr<HttpResponse_base>& retVal, AsyncEvent* ac)
 {
     static const char* s_keys[] = {
-        "query", "headers", "body", "json", "response_body", NULL
+        "query", "headers", "body", "json", "pack", "response_body", NULL
     };
 
     if (ac->isSync()) {
         Isolate* isolate = holder();
+        v8::Local<v8::Context> context = isolate->context();
         obj_ptr<NObject> map = new NObject();
         obj_ptr<SeekableStream_base> stm;
         v8::Local<v8::Object> o;
@@ -791,13 +798,13 @@ result_t HttpClient::request(exlib::string method, exlib::string url,
         o.Clear();
         hr = GetConfigValue(isolate->m_isolate, opts, "headers", o);
         if (hr >= 0) {
-            JSArray ks = o->GetPropertyNames();
+            JSArray ks = o->GetPropertyNames(context);
             int32_t len = ks->Length();
             int32_t i;
 
             for (i = 0; i < len; i++) {
-                JSValue k = ks->Get(i);
-                JSValue v = o->Get(k);
+                JSValue k = ks->Get(context, i);
+                JSValue v = o->Get(context, k);
 
                 if (v.IsEmpty())
                     return CALL_E_JAVASCRIPT;
@@ -809,16 +816,15 @@ result_t HttpClient::request(exlib::string method, exlib::string url,
                     int32_t i1;
 
                     for (i1 = 0; i1 < len1; i1++)
-                        arr->append(ToCString(v8::String::Utf8Value(isolate->m_isolate, a->Get(i1))));
+                        arr->append(isolate->toString(JSValue(a->Get(context, i1))));
 
-                    map->add(ToCString(v8::String::Utf8Value(isolate->m_isolate, k)), arr);
+                    map->add(isolate->toString(k), arr);
                 } else
-                    map->add(ToCString(v8::String::Utf8Value(isolate->m_isolate, k)),
-                        ToCString(v8::String::Utf8Value(isolate->m_isolate, v)));
+                    map->add(isolate->toString(k), isolate->toString(v));
             }
         }
 
-        v = opts->Get(isolate->NewString("body", 4));
+        v = opts->Get(context, isolate->NewString("body", 4));
         if (v.IsEmpty())
             return CALL_E_JAVASCRIPT;
 
@@ -848,12 +854,28 @@ result_t HttpClient::request(exlib::string method, exlib::string url,
                 stm->cc_write(buf);
             }
         } else {
-            v = opts->Get(isolate->NewString("json", 4));
+            v = opts->Get(context, isolate->NewString("json", 4));
             if (v.IsEmpty())
                 return CALL_E_JAVASCRIPT;
-            if (!v->IsUndefined()) {
-                obj_ptr<Buffer_base> buf;
 
+            if (v->IsUndefined()) {
+                v = opts->Get(context, isolate->NewString("pack", 4));
+                if (v.IsEmpty())
+                    return CALL_E_JAVASCRIPT;
+
+                if (!v->IsUndefined()) {
+                    obj_ptr<Buffer_base> buf;
+                    stm = new MemoryStream();
+
+                    hr = msgpack_base::encode(v, buf);
+                    if (hr < 0)
+                        return hr;
+
+                    stm->cc_write(buf);
+                    map->add("Content-Type", "application/msgpack");
+                }
+            } else {
+                obj_ptr<Buffer_base> buf;
                 stm = new MemoryStream();
 
                 exlib::string s;

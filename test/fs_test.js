@@ -4,7 +4,9 @@ var path = require('path');
 var fs = require('fs');
 var zip = require('zip');
 var io = require('io');
-var { ensureDirectoryExisted } = require('./_helpers/process');
+var {
+    ensureDirectoryExisted
+} = require('./_helpers/process');
 
 test.setup();
 
@@ -19,6 +21,7 @@ function rmdir(pathname) {
 
 var pathname = 'test_dir' + vmid;
 var pathname1 = 'test1_dir' + vmid;
+var pathname2 = 'test2_dir' + vmid;
 
 var win = require("os").type() == "Windows";
 var linux = require("os").type() == "Linux";
@@ -47,8 +50,11 @@ function assert_stat_property(statObj) {
 
 describe('fs', () => {
     before(() => {
+        rmdir(path.join(pathname, pathname));
+        rmdir(path.join(pathname1, pathname));
         rmdir(pathname);
         rmdir(pathname1);
+        rmdir(pathname2);
     });
 
     after(() => {
@@ -107,6 +113,18 @@ describe('fs', () => {
             assert.equal(st.isReadable(), true);
             assert.equal(st.isWritable(), true);
         });
+
+        it('error.code', () => {
+            var code;
+
+            try {
+                fs.stat('aaaa');
+            } catch (e) {
+                code = e.code;
+            }
+
+            assert.equal(code, "ENOENT");
+        })
     });
 
     it("file open & close", () => {
@@ -173,13 +191,27 @@ describe('fs', () => {
     });
 
     it("mkdir", () => {
-        fs.mkdir(pathname, 511);
+        fs.mkdir(pathname);
         assert.equal(fs.exists(pathname), true);
 
         if (!win) {
             var st = fs.stat(pathname);
-            assert.equal(st.mode & 511, 511);
+            assert.equal(st.mode & 0o777, 0o755);
         }
+    });
+
+    it("mkdir with fstat mode", () => {
+        const mode = 0o511;
+        fs.mkdir(pathname2, mode);
+        assert.equal(fs.exists(pathname2), true);
+
+        if (!win) {
+            var st = fs.stat(pathname2);
+            assert.equal(st.mode & 0o777, mode);
+        }
+
+        fs.rmdir(pathname2);
+        assert.equal(fs.exists(pathname2), false);
     });
 
     it("rename", () => {
@@ -191,6 +223,31 @@ describe('fs', () => {
     it("rmdir", () => {
         fs.rmdir(pathname1);
         assert.equal(fs.exists(pathname1), false);
+    });
+
+    it("mkdir recursive", () => {
+        var recursive_path = path.join(pathname, pathname);
+        fs.mkdir(recursive_path, {
+            recursive: true
+        });
+        assert.equal(fs.exists(recursive_path), true);
+
+        fs.rmdir(recursive_path);
+        fs.rmdir(pathname);
+    });
+
+    it("mkdir recursive do not throw error when directory exists", () => {
+        fs.mkdir(path.join(__dirname, "fs_files"), {
+            recursive: true
+        });
+    });
+
+    it("mkdir recursive throw error when path is not directory", () => {
+        assert.throws(() => {
+            fs.mkdir(path.join(__filename, "fs_files"), {
+                recursive: true
+            });
+        });
     });
 
     it("file.size", () => {
@@ -234,6 +291,9 @@ describe('fs', () => {
             if (linux)
                 return;
             var fn = path.join(__dirname, 'fs_test.js.symlink');
+            try {
+                fs.unlink(fn);
+            } catch (e) { }
 
             fs.symlink(path.join(__dirname, 'fs_test.js'), fn);
             fs.lchmod(fn, 511);

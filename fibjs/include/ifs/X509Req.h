@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _X509Req_base_H_
-#define _X509Req_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -38,6 +37,8 @@ public:
     virtual result_t sign(exlib::string issuer, PKey_base* key, v8::Local<v8::Object> opts, obj_ptr<X509Cert_base>& retVal, AsyncEvent* ac) = 0;
     virtual result_t get_subject(exlib::string& retVal) = 0;
     virtual result_t get_publicKey(obj_ptr<PKey_base>& retVal) = 0;
+    virtual result_t get_sig_md(int32_t& retVal) = 0;
+    virtual result_t get_sig_pk(int32_t& retVal) = 0;
 
 public:
     template <typename T>
@@ -52,6 +53,8 @@ public:
     static void s_sign(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_get_subject(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
     static void s_get_publicKey(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
+    static void s_get_sig_md(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
+    static void s_get_sig_pk(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
 
 public:
     ASYNC_MEMBERVALUE4(X509Req_base, sign, exlib::string, PKey_base*, v8::Local<v8::Object>, obj_ptr<X509Cert_base>);
@@ -77,7 +80,9 @@ inline ClassInfo& X509Req_base::class_info()
 
     static ClassData::ClassProperty s_property[] = {
         { "subject", s_get_subject, block_set, false },
-        { "publicKey", s_get_publicKey, block_set, false }
+        { "publicKey", s_get_publicKey, block_set, false },
+        { "sig_md", s_get_sig_md, block_set, false },
+        { "sig_pk", s_get_sig_pk, block_set, false }
     };
 
     static ClassData s_cd = {
@@ -112,7 +117,7 @@ void X509Req_base::__new(const T& args)
 
     ARG(exlib::string, 0);
     ARG(obj_ptr<PKey_base>, 1);
-    OPT_ARG(int32_t, 2, hash_base::_SHA1);
+    OPT_ARG(int32_t, 2, hash_base::C_SHA1);
 
     hr = _new(v0, v1, v2, vr, args.This());
 
@@ -244,6 +249,30 @@ inline void X509Req_base::s_get_publicKey(v8::Local<v8::Name> property, const v8
 
     METHOD_RETURN();
 }
+
+inline void X509Req_base::s_get_sig_md(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args)
+{
+    int32_t vr;
+
+    METHOD_NAME("X509Req.sig_md");
+    METHOD_INSTANCE(X509Req_base);
+    PROPERTY_ENTER();
+
+    hr = pInst->get_sig_md(vr);
+
+    METHOD_RETURN();
 }
 
-#endif
+inline void X509Req_base::s_get_sig_pk(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args)
+{
+    int32_t vr;
+
+    METHOD_NAME("X509Req.sig_pk");
+    METHOD_INSTANCE(X509Req_base);
+    PROPERTY_ENTER();
+
+    hr = pInst->get_sig_pk(vr);
+
+    METHOD_RETURN();
+}
+}

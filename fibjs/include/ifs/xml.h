@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _xml_base_H_
-#define _xml_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -25,14 +24,14 @@ class xml_base : public object_base {
 
 public:
     enum {
-        _ELEMENT_NODE = 1,
-        _ATTRIBUTE_NODE = 2,
-        _TEXT_NODE = 3,
-        _CDATA_SECTION_NODE = 4,
-        _PROCESSING_INSTRUCTION_NODE = 7,
-        _COMMENT_NODE = 8,
-        _DOCUMENT_NODE = 9,
-        _DOCUMENT_TYPE_NODE = 10
+        C_ELEMENT_NODE = 1,
+        C_ATTRIBUTE_NODE = 2,
+        C_TEXT_NODE = 3,
+        C_CDATA_SECTION_NODE = 4,
+        C_PROCESSING_INSTRUCTION_NODE = 7,
+        C_COMMENT_NODE = 8,
+        C_DOCUMENT_NODE = 9,
+        C_DOCUMENT_TYPE_NODE = 10
     };
 
 public:
@@ -75,14 +74,14 @@ inline ClassInfo& xml_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "ELEMENT_NODE", _ELEMENT_NODE },
-        { "ATTRIBUTE_NODE", _ATTRIBUTE_NODE },
-        { "TEXT_NODE", _TEXT_NODE },
-        { "CDATA_SECTION_NODE", _CDATA_SECTION_NODE },
-        { "PROCESSING_INSTRUCTION_NODE", _PROCESSING_INSTRUCTION_NODE },
-        { "COMMENT_NODE", _COMMENT_NODE },
-        { "DOCUMENT_NODE", _DOCUMENT_NODE },
-        { "DOCUMENT_TYPE_NODE", _DOCUMENT_TYPE_NODE }
+        { "ELEMENT_NODE", C_ELEMENT_NODE },
+        { "ATTRIBUTE_NODE", C_ATTRIBUTE_NODE },
+        { "TEXT_NODE", C_TEXT_NODE },
+        { "CDATA_SECTION_NODE", C_CDATA_SECTION_NODE },
+        { "PROCESSING_INSTRUCTION_NODE", C_PROCESSING_INSTRUCTION_NODE },
+        { "COMMENT_NODE", C_COMMENT_NODE },
+        { "DOCUMENT_NODE", C_DOCUMENT_NODE },
+        { "DOCUMENT_TYPE_NODE", C_DOCUMENT_TYPE_NODE }
     };
 
     static ClassData s_cd = {
@@ -135,5 +134,3 @@ inline void xml_base::s_static_serialize(const v8::FunctionCallbackInfo<v8::Valu
     METHOD_RETURN();
 }
 }
-
-#endif

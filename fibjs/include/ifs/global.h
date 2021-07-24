@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _global_base_H_
-#define _global_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -21,7 +20,6 @@ class console_base;
 class process_base;
 class Worker_base;
 class Timer_base;
-class Stream_base;
 
 class global_base : public object_base {
     DECLARE_CLASS(global_base);
@@ -44,8 +42,6 @@ public:
     static result_t setImmediate(v8::Local<v8::Function> callback, OptArgs args, obj_ptr<Timer_base>& retVal);
     static result_t clearImmediate(v8::Local<v8::Value> t);
     static result_t GC();
-    static result_t repl(v8::Local<v8::Array> cmds);
-    static result_t repl(Stream_base* out, v8::Local<v8::Array> cmds);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -75,7 +71,6 @@ public:
     static void s_static_setImmediate(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_clearImmediate(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_GC(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void s_static_repl(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
 
@@ -84,7 +79,6 @@ public:
 #include "ifs/process.h"
 #include "ifs/Worker.h"
 #include "ifs/Timer.h"
-#include "ifs/Stream.h"
 
 namespace fibjs {
 inline ClassInfo& global_base::class_info()
@@ -100,8 +94,7 @@ inline ClassInfo& global_base::class_info()
         { "clearHrInterval", s_static_clearHrInterval, true },
         { "setImmediate", s_static_setImmediate, true },
         { "clearImmediate", s_static_clearImmediate, true },
-        { "GC", s_static_GC, true },
-        { "repl", s_static_repl, true }
+        { "GC", s_static_GC, true }
     };
 
     static ClassData::ClassObject s_object[] = {
@@ -357,27 +350,4 @@ inline void global_base::s_static_GC(const v8::FunctionCallbackInfo<v8::Value>& 
 
     METHOD_VOID();
 }
-
-inline void global_base::s_static_repl(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    METHOD_NAME("global.repl");
-    METHOD_ENTER();
-
-    METHOD_OVER(1, 0);
-
-    OPT_ARG(v8::Local<v8::Array>, 0, v8::Array::New(isolate));
-
-    hr = repl(v0);
-
-    METHOD_OVER(2, 1);
-
-    ARG(obj_ptr<Stream_base>, 0);
-    OPT_ARG(v8::Local<v8::Array>, 1, v8::Array::New(isolate));
-
-    hr = repl(v0, v1);
-
-    METHOD_VOID();
 }
-}
-
-#endif

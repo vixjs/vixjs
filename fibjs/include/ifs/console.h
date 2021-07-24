@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _console_base_H_
-#define _console_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -21,16 +20,16 @@ class console_base : public object_base {
 
 public:
     enum {
-        _FATAL = 0,
-        _ALERT = 1,
-        _CRIT = 2,
-        _ERROR = 3,
-        _WARN = 4,
-        _NOTICE = 5,
-        _INFO = 6,
-        _DEBUG = 7,
-        _PRINT = 9,
-        _NOTSET = 10
+        C_FATAL = 0,
+        C_ALERT = 1,
+        C_CRIT = 2,
+        C_ERROR = 3,
+        C_WARN = 4,
+        C_NOTICE = 5,
+        C_INFO = 6,
+        C_DEBUG = 7,
+        C_PRINT = 9,
+        C_NOTSET = 10
     };
 
 public:
@@ -185,16 +184,16 @@ inline ClassInfo& console_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "FATAL", _FATAL },
-        { "ALERT", _ALERT },
-        { "CRIT", _CRIT },
-        { "ERROR", _ERROR },
-        { "WARN", _WARN },
-        { "NOTICE", _NOTICE },
-        { "INFO", _INFO },
-        { "DEBUG", _DEBUG },
-        { "PRINT", _PRINT },
-        { "NOTSET", _NOTSET }
+        { "FATAL", C_FATAL },
+        { "ALERT", C_ALERT },
+        { "CRIT", C_CRIT },
+        { "ERROR", C_ERROR },
+        { "WARN", C_WARN },
+        { "NOTICE", C_NOTICE },
+        { "INFO", C_INFO },
+        { "DEBUG", C_DEBUG },
+        { "PRINT", C_PRINT },
+        { "NOTSET", C_NOTSET }
     };
 
     static ClassData s_cd = {
@@ -793,5 +792,3 @@ inline void console_base::s_static_getpass(const v8::FunctionCallbackInfo<v8::Va
     METHOD_RETURN();
 }
 }
-
-#endif

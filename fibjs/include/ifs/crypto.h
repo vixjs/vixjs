@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _crypto_base_H_
-#define _crypto_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -29,32 +28,32 @@ class crypto_base : public object_base {
 
 public:
     enum {
-        _AES = 1,
-        _CAMELLIA = 2,
-        _DES = 3,
-        _DES_EDE = 4,
-        _DES_EDE3 = 5,
-        _BLOWFISH = 6,
-        _ARC4 = 7,
-        _ARIA = 8,
-        _CHACHA20 = 9,
-        _SM4 = 10,
-        _ECB = 1,
-        _CBC = 2,
-        _CFB64 = 3,
-        _CFB128 = 4,
-        _OFB = 5,
-        _CTR = 6,
-        _GCM = 7,
-        _STREAM = 8,
-        _CCM = 9,
-        _XTS = 10,
-        _POLY1305 = 11,
-        _PKCS7 = 0,
-        _ONE_AND_ZEROS = 1,
-        _ZEROS_AND_LEN = 2,
-        _ZEROS = 3,
-        _NOPADDING = 4
+        C_AES = 1,
+        C_CAMELLIA = 2,
+        C_DES = 3,
+        C_DES_EDE = 4,
+        C_DES_EDE3 = 5,
+        C_BLOWFISH = 6,
+        C_ARC4 = 7,
+        C_ARIA = 8,
+        C_CHACHA20 = 9,
+        C_SM4 = 10,
+        C_ECB = 1,
+        C_CBC = 2,
+        C_CFB64 = 3,
+        C_CFB128 = 4,
+        C_OFB = 5,
+        C_CTR = 6,
+        C_GCM = 7,
+        C_STREAM = 8,
+        C_CCM = 9,
+        C_XTS = 10,
+        C_POLY1305 = 11,
+        C_PKCS7 = 0,
+        C_ONE_AND_ZEROS = 1,
+        C_ZEROS_AND_LEN = 2,
+        C_ZEROS = 3,
+        C_NOPADDING = 4
     };
 
 public:
@@ -76,6 +75,7 @@ public:
     static result_t pbkdf1(Buffer_base* password, Buffer_base* salt, int32_t iterations, int32_t size, exlib::string algoName, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
     static result_t pbkdf2(Buffer_base* password, Buffer_base* salt, int32_t iterations, int32_t size, int32_t algo, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
     static result_t pbkdf2(Buffer_base* password, Buffer_base* salt, int32_t iterations, int32_t size, exlib::string algoName, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
+    static result_t getHashes(v8::Local<v8::Array>& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -104,6 +104,7 @@ public:
     static void s_static_genSm2Key(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_pbkdf1(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_pbkdf2(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_getHashes(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 public:
     ASYNC_STATICVALUE2(crypto_base, randomBytes, int32_t, obj_ptr<Buffer_base>);
@@ -153,7 +154,8 @@ inline ClassInfo& crypto_base::class_info()
         { "pbkdf1", s_static_pbkdf1, true },
         { "pbkdf1Sync", s_static_pbkdf1, true },
         { "pbkdf2", s_static_pbkdf2, true },
-        { "pbkdf2Sync", s_static_pbkdf2, true }
+        { "pbkdf2Sync", s_static_pbkdf2, true },
+        { "getHashes", s_static_getHashes, true }
     };
 
     static ClassData::ClassObject s_object[] = {
@@ -165,32 +167,32 @@ inline ClassInfo& crypto_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "AES", _AES },
-        { "CAMELLIA", _CAMELLIA },
-        { "DES", _DES },
-        { "DES_EDE", _DES_EDE },
-        { "DES_EDE3", _DES_EDE3 },
-        { "BLOWFISH", _BLOWFISH },
-        { "ARC4", _ARC4 },
-        { "ARIA", _ARIA },
-        { "CHACHA20", _CHACHA20 },
-        { "SM4", _SM4 },
-        { "ECB", _ECB },
-        { "CBC", _CBC },
-        { "CFB64", _CFB64 },
-        { "CFB128", _CFB128 },
-        { "OFB", _OFB },
-        { "CTR", _CTR },
-        { "GCM", _GCM },
-        { "STREAM", _STREAM },
-        { "CCM", _CCM },
-        { "XTS", _XTS },
-        { "POLY1305", _POLY1305 },
-        { "PKCS7", _PKCS7 },
-        { "ONE_AND_ZEROS", _ONE_AND_ZEROS },
-        { "ZEROS_AND_LEN", _ZEROS_AND_LEN },
-        { "ZEROS", _ZEROS },
-        { "NOPADDING", _NOPADDING }
+        { "AES", C_AES },
+        { "CAMELLIA", C_CAMELLIA },
+        { "DES", C_DES },
+        { "DES_EDE", C_DES_EDE },
+        { "DES_EDE3", C_DES_EDE3 },
+        { "BLOWFISH", C_BLOWFISH },
+        { "ARC4", C_ARC4 },
+        { "ARIA", C_ARIA },
+        { "CHACHA20", C_CHACHA20 },
+        { "SM4", C_SM4 },
+        { "ECB", C_ECB },
+        { "CBC", C_CBC },
+        { "CFB64", C_CFB64 },
+        { "CFB128", C_CFB128 },
+        { "OFB", C_OFB },
+        { "CTR", C_CTR },
+        { "GCM", C_GCM },
+        { "STREAM", C_STREAM },
+        { "CCM", C_CCM },
+        { "XTS", C_XTS },
+        { "POLY1305", C_POLY1305 },
+        { "PKCS7", C_PKCS7 },
+        { "ONE_AND_ZEROS", C_ONE_AND_ZEROS },
+        { "ZEROS_AND_LEN", C_ZEROS_AND_LEN },
+        { "ZEROS", C_ZEROS },
+        { "NOPADDING", C_NOPADDING }
     };
 
     static ClassData s_cd = {
@@ -502,6 +504,18 @@ inline void crypto_base::s_static_pbkdf2(const v8::FunctionCallbackInfo<v8::Valu
 
     METHOD_RETURN();
 }
-}
 
-#endif
+inline void crypto_base::s_static_getHashes(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    v8::Local<v8::Array> vr;
+
+    METHOD_NAME("crypto.getHashes");
+    METHOD_ENTER();
+
+    METHOD_OVER(0, 0);
+
+    hr = getHashes(vr);
+
+    METHOD_RETURN();
+}
+}

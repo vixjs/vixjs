@@ -5,11 +5,10 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/xml.h"
 #include "XmlNodeList.h"
-
-#ifndef XMLNODEIMPL_H_
-#define XMLNODEIMPL_H_
 
 namespace fibjs {
 
@@ -73,14 +72,14 @@ public:
 
     result_t lookupPrefix(exlib::string namespaceURI, exlib::string& retVal)
     {
-        if (!m_parent || m_parent->m_type == xml_base::_DOCUMENT_NODE)
+        if (!m_parent || m_parent->m_type == xml_base::C_DOCUMENT_NODE)
             return CALL_RETURN_NULL;
         return m_parent->m_node->lookupPrefix(namespaceURI, retVal);
     }
 
     result_t lookupNamespaceURI(exlib::string prefix, exlib::string& retVal)
     {
-        if (!m_parent || m_parent->m_type == xml_base::_DOCUMENT_NODE)
+        if (!m_parent || m_parent->m_type == xml_base::C_DOCUMENT_NODE)
             return CALL_RETURN_NULL;
         return m_parent->m_node->lookupNamespaceURI(prefix, retVal);
     }
@@ -152,4 +151,3 @@ public:
 };
 
 } /* namespace fibjs */
-#endif /* XMLNODEIMPL_H_ */

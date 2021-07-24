@@ -5,12 +5,11 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "QuickArray.h"
 #include <string>
 #include <string.h>
-
-#ifndef STRINGARRAY_H_
-#define STRINGARRAY_H_
 
 namespace fibjs {
 
@@ -32,11 +31,13 @@ public:
                 s = m_array[0];
             else {
                 s.resize(m_size);
+                char* _s = s.c_buffer();
+
                 for (i = 0; i < (int32_t)m_array.size(); i++) {
                     exlib::string& s1 = m_array[i];
                     size_t len = s1.length();
 
-                    memcpy(&s[p], s1.c_str(), len);
+                    memcpy(&_s[p], s1.c_str(), len);
                     p += (int32_t)len;
                 }
             }
@@ -86,5 +87,3 @@ private:
     size_t m_size;
 };
 }
-
-#endif /* STRINGARRAY_H_ */

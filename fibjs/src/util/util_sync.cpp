@@ -14,18 +14,19 @@ namespace fibjs {
 static void sync_callback(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Local<v8::Object> _data = v8::Local<v8::Object>::Cast(args.Data());
 
     obj_ptr<Event_base> ev;
-    ev = Event_base::getInstance(_data->Get(NewString(isolate, "_ev")));
+    ev = Event_base::getInstance(JSValue(_data->Get(context, NewString(isolate, "_ev"))));
 
     int32_t len = args.Length();
 
     if (len > 0)
-        _data->Set(NewString(isolate, "_error"), args[0]);
+        _data->Set(context, NewString(isolate, "_error"), args[0]);
 
     if (len > 1)
-        _data->Set(NewString(isolate, "_result"), args[1]);
+        _data->Set(context, NewString(isolate, "_result"), args[1]);
 
     ev->set();
 }
@@ -33,11 +34,12 @@ static void sync_callback(const v8::FunctionCallbackInfo<v8::Value>& args)
 static void sync_stub(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
     obj_ptr<Event_base> ev = new Event();
     v8::Local<v8::Object> _data = v8::Object::New(isolate->m_isolate);
     std::vector<v8::Local<v8::Value>> argv;
 
-    _data->Set(isolate->NewString("_ev"), ev->wrap());
+    _data->Set(context, isolate->NewString("_ev"), ev->wrap());
 
     int32_t len = args.Length();
     int32_t i;
@@ -55,127 +57,44 @@ static void sync_stub(const v8::FunctionCallbackInfo<v8::Value>& args)
     v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(args.Data());
 
     exlib::string str("util.sync(");
-    str += ToCString(v8::String::Utf8Value(isolate->m_isolate, func->GetName()));
+    str += isolate->toString(func->GetName());
     str += ")";
 
     METHOD_NAME(str.c_str());
 
-    v8::Local<v8::Value> result = func->Call(args.This(), (int32_t)argv.size(), argv.data());
+    v8::Local<v8::Value> result;
+
+    func->Call(context, args.This(), (int32_t)argv.size(), argv.data()).ToLocal(&result);
     if (result.IsEmpty())
         return;
 
-    isolate->m_isolate->RunMicrotasks();
     ev->wait();
 
-    JSValue error = _data->Get(isolate->NewString("_error"));
+    JSValue error = _data->Get(context, isolate->NewString("_error"));
 
     if (!error.IsEmpty() && !error->IsUndefined() && !error->IsNull())
         isolate->m_isolate->ThrowException(error);
     else
-        args.GetReturnValue().Set(_data->Get(isolate->NewString("_result")));
-}
-
-static void promise_then(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(args.Data());
-    v8::Local<v8::Value> argv[2] = {
-        v8::Null(args.GetIsolate()), args[0]
-    };
-
-    func->Call(args.This(), 2, argv);
-}
-
-static void promise_catch(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(args.Data());
-    v8::Local<v8::Value> argv[2] = {
-        args[0], v8::Null(args.GetIsolate())
-    };
-
-    func->Call(args.This(), 2, argv);
-}
-
-static void async_promise(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    Isolate* isolate = Isolate::current();
-    std::vector<v8::Local<v8::Value>> argv;
-
-    int32_t len = args.Length();
-    int32_t i;
-
-    argv.resize(len - 1);
-    for (i = 0; i < len - 1; i++)
-        argv[i] = args[i];
-
-    v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(args.Data());
-    v8::Local<v8::Value> result = func->Call(args.This(), (int32_t)argv.size(), argv.data());
-    if (result.IsEmpty())
-        return;
-
-    v8::Local<v8::Promise> _promise;
-    v8::Local<v8::Function> _then;
-    v8::Local<v8::Function> _catch;
-
-    if (result->IsPromise()) {
-        _promise = v8::Local<v8::Promise>::Cast(result);
-    } else if (result->IsObject()) {
-        JSValue v;
-        v8::Local<v8::Object> o = v8::Local<v8::Object>::Cast(result);
-
-        v = o->Get(isolate->NewString("then"));
-        if (v->IsFunction())
-            _then = v8::Local<v8::Function>::Cast(v);
-
-        v = o->Get(isolate->NewString("catch"));
-        if (v->IsFunction())
-            _catch = v8::Local<v8::Function>::Cast(v);
-    }
-
-    if (_promise.IsEmpty() && (_then.IsEmpty() || _catch.IsEmpty())) {
-        ThrowError("not async function.");
-        return;
-    }
-
-    v8::Local<v8::Function> _then_func;
-    v8::Local<v8::Function> _catch_func;
-
-    _then_func = isolate->NewFunction("promise_then", promise_then, args[len - 1]);
-    if (_then_func.IsEmpty()) {
-        ThrowError("function alloc error.");
-        return;
-    }
-    _catch_func = isolate->NewFunction("promise_catch", promise_catch, args[len - 1]);
-    if (_catch_func.IsEmpty()) {
-        ThrowError("function alloc error.");
-        return;
-    }
-
-    if (!_promise.IsEmpty()) {
-        _promise->Then(isolate->context(), _then_func);
-        _promise->Catch(isolate->context(), _catch_func);
-    } else {
-        _then->Call(result, 1, (v8::Local<v8::Value>*)&_then_func);
-        _catch->Call(result, 1, (v8::Local<v8::Value>*)&_catch_func);
-    }
+        args.GetReturnValue().Set(JSValue(_data->Get(context, isolate->NewString("_result"))));
 }
 
 result_t util_base::sync(v8::Local<v8::Function> func, bool async_func, v8::Local<v8::Function>& retVal)
 {
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
     v8::Local<v8::Function> func1;
 
     if (async_func || func->IsAsyncFunction()) {
-        func = isolate->NewFunction("async_promise", async_promise, func);
-        if (func.IsEmpty())
-            return CHECK_ERROR(Runtime::setError("function alloc error."));
+        result_t hr = callbackify(func, func);
+        if (hr < 0)
+            return hr;
     }
 
     func1 = isolate->NewFunction("sync", sync_stub, func);
     if (func1.IsEmpty())
         return CHECK_ERROR(Runtime::setError("function alloc error."));
 
-    func1->SetPrivate(func1->CreationContext(),
-        v8::Private::ForApi(isolate->m_isolate, isolate->NewString("_async")), func);
+    func1->SetPrivate(context, v8::Private::ForApi(isolate->m_isolate, isolate->NewString("_async")), func);
 
     retVal = func1;
 

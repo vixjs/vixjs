@@ -6,6 +6,8 @@
  * @desc [description]
  */
 
+#pragma once
+
 #include "ifs/StatsWatcher.h"
 #include "ifs/fs.h"
 #include "EventEmitter.h"
@@ -15,9 +17,6 @@
 #include "utf8.h"
 #include "Stat.h"
 #include "AsyncUV.h"
-
-#ifndef _fj_StatsWATCHER_H
-#define _fj_StatsWATCHER_H
 
 namespace fibjs {
 
@@ -56,7 +55,7 @@ public:
         setTargetWatcher(m_target, this);
     }
 
-    ~StatsWatcher() {};
+    ~StatsWatcher(){};
 
 public:
     EVENT_SUPPORT();
@@ -138,23 +137,16 @@ public:
         if (m_Persistent)
             isolate_ref();
 
-        int ret = uv_call([&] {
+        return uv_call([&] {
             uv_timer_init(s_uv_loop, &m_timer_req);
             int32_t uv_err_no = uv_timer_start(&m_timer_req, timer_callback, 0, getIntervalMS());
             if (uv_err_no != 0) {
                 onError(CALL_E_INVALID_CALL, uv_strerror(uv_err_no));
                 close();
-
-                return uv_err_no;
             }
 
-            return 0;
+            return uv_err_no;
         });
-
-        if (ret != 0)
-            return CHECK_ERROR(Runtime::setError(uv_strerror(ret)));
-
-        return 0;
     };
 
 public:
@@ -305,5 +297,3 @@ private:
     uv_timer_t m_timer_req;
 };
 }
-
-#endif // _fj_StatsWATCHER_H

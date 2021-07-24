@@ -7,6 +7,7 @@
 
 #include "object.h"
 #include "ifs/crypto.h"
+#include "StringBuffer.h"
 #include "Cipher.h"
 #include "Buffer.h"
 #include "ssl.h"
@@ -71,9 +72,9 @@ result_t Cipher_base::_new(int32_t provider, int32_t mode, Buffer_base* key,
     Buffer_base* iv, obj_ptr<Cipher_base>& retVal,
     v8::Local<v8::Object> This)
 {
-    if (provider < crypto_base::_AES || provider > crypto_base::_SM4)
+    if (provider < crypto_base::C_AES || provider > crypto_base::C_SM4)
         return CHECK_ERROR(Runtime::setError("Cipher: Invalid provider"));
-    if (mode < crypto_base::_ECB || mode > crypto_base::_POLY1305)
+    if (mode < crypto_base::C_ECB || mode > crypto_base::C_POLY1305)
         return CHECK_ERROR(Runtime::setError("Cipher: Invalid mode"));
 
     exlib::string strKey;
@@ -86,13 +87,13 @@ result_t Cipher_base::_new(int32_t provider, int32_t mode, Buffer_base* key,
     if (keylen == 0)
         return CHECK_ERROR(Runtime::setError("Cipher: Invalid key size"));
 
-    if (keylen == 16 && provider == crypto_base::_DES_EDE3) {
+    if (keylen == 16 && provider == crypto_base::C_DES_EDE3) {
         strKey.append(strKey.c_str(), 8);
         keylen = 24;
     }
 
     for (int32_t i = 0; i < SIZE_COUNT; i++) {
-        const mbedtls_cipher_info_t* mod_info = s_sizes[provider - crypto_base::_AES][i].cis[mode];
+        const mbedtls_cipher_info_t* mod_info = s_sizes[provider - crypto_base::C_AES][i].cis[mode];
         if (mod_info) {
             bFoundMode = true;
             if (mod_info->key_bitlen == keylen * 8) {
@@ -133,7 +134,7 @@ result_t Cipher_base::_new(int32_t provider, int32_t mode, Buffer_base* key,
 result_t Cipher_base::_new(int32_t provider, Buffer_base* key,
     obj_ptr<Cipher_base>& retVal, v8::Local<v8::Object> This)
 {
-    return _new(provider, crypto_base::_STREAM, key, NULL, retVal);
+    return _new(provider, crypto_base::C_STREAM, key, NULL, retVal);
 }
 
 Cipher::Cipher(const mbedtls_cipher_info_t* info)
@@ -148,10 +149,10 @@ Cipher::Cipher(const mbedtls_cipher_info_t* info)
 Cipher::~Cipher()
 {
     if (m_key.length())
-        memset(&m_key[0], 0, m_key.length());
+        memset(m_key.c_buffer(), 0, m_key.length());
 
     if (m_iv.length())
-        memset(&m_iv[0], 0, m_iv.length());
+        memset(m_iv.c_buffer(), 0, m_iv.length());
 
     mbedtls_cipher_free(&m_ctx);
 }
@@ -226,7 +227,7 @@ result_t Cipher::process(const mbedtls_operation_t operation, Buffer_base* data,
         return CHECK_ERROR(_ssl::setError(ret));
 
     exlib::string input;
-    exlib::string output;
+    StringBuffer output;
     unsigned char buffer[1024];
     size_t olen, ilen, offset, block_size, data_size;
 
@@ -257,7 +258,7 @@ result_t Cipher::process(const mbedtls_operation_t operation, Buffer_base* data,
         return CHECK_ERROR(_ssl::setError(ret));
 
     output.append((const char*)buffer, olen);
-    retVal = new Buffer(output);
+    retVal = new Buffer(output.str());
 
     return 0;
 }

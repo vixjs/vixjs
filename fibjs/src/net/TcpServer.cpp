@@ -41,6 +41,12 @@ result_t TcpServer_base::_new(exlib::string addr, int32_t port,
     return _new_tcpServer(addr, port, listener, retVal, This);
 }
 
+result_t TcpServer_base::_new(exlib::string addr, Handler_base* listener,
+    obj_ptr<TcpServer_base>& retVal, v8::Local<v8::Object> This)
+{
+    return _new_tcpServer(addr, 0, listener, retVal, This);
+}
+
 TcpServer::TcpServer()
 {
     m_running = false;
@@ -50,8 +56,18 @@ result_t TcpServer::create(exlib::string addr, int32_t port,
     Handler_base* listener)
 {
     result_t hr;
+    bool ipv4 = false;
+    bool ipv6 = false;
 
-    hr = Socket_base::_new(net_base::_AF_INET, net_base::_SOCK_STREAM,
+    if (addr.empty())
+        ipv4 = true;
+    else
+        net_base::isIPv4(addr, ipv4);
+    if (!ipv4)
+        net_base::isIPv6(addr, ipv6);
+
+    hr = Socket_base::_new(ipv6 ? net_base::C_AF_INET6 : ipv4 ? net_base::C_AF_INET
+                                                              : net_base::C_AF_UNIX,
         m_socket);
     if (hr < 0)
         return hr;
@@ -118,7 +134,7 @@ result_t TcpServer::start()
             , m_pThis(pThis)
             , m_holder(holder)
         {
-            m_pThis->holder()->Ref();
+            m_pThis->isolate_ref();
             next(accept);
         }
 
@@ -140,8 +156,8 @@ result_t TcpServer::start()
 
         virtual int32_t error(int32_t v)
         {
-            if (v == CALL_E_BAD_FILE || v == CALL_E_INVALID_CALL) {
-                m_pThis->holder()->Unref();
+            if (v == CALL_E_BAD_FILE || v == CALL_E_INVALID_CALL || v == CALL_E_NETNAME_DELETED) {
+                m_pThis->isolate_unref();
                 return next();
             }
 

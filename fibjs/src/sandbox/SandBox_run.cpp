@@ -29,15 +29,27 @@ result_t SandBox::run_main(exlib::string fname, v8::Local<v8::Array> argv)
         opt_tools[i].getDate(bin);
     } else {
         bool isAbs;
+        exlib::string rname;
 
         path_base::isAbsolute(fname, isAbs);
-        if (!isAbs)
-            return CHECK_ERROR(Runtime::setError("SandBox: Invalid file name."));
-        path_base::normalize(fname, fname);
+        if (!isAbs) {
+            rname = fname;
+            os_resolve(fname);
+        } else
+            path_base::normalize(fname, fname);
 
         hr = resolveFile(fname, bin, NULL);
-        if (hr < 0)
-            return hr;
+        if (hr < 0) {
+            if (isAbs)
+                return hr;
+
+            fname = "node_modules/.bin/" + rname;
+            os_resolve(fname);
+
+            hr = resolveFile(fname, bin, NULL);
+            if (hr < 0)
+                return hr;
+        }
     }
 
     obj_ptr<ExtLoader> l;
@@ -48,10 +60,8 @@ result_t SandBox::run_main(exlib::string fname, v8::Local<v8::Array> argv)
     Context context(this, fname);
     Isolate* isolate = holder();
 
-    std::vector<ExtLoader::arg> extarg(2);
-    extarg[0] = ExtLoader::arg("argv", argv);
-    extarg[1] = ExtLoader::arg("repl",
-        global_base::class_info().getModule(isolate)->Get(isolate->NewString("repl")));
+    std::vector<ExtLoader::arg> extarg(1);
+    extarg[0] = ExtLoader::arg("__argv", argv);
 
     return l->run_script(&context, bin, fname, extarg, true);
 }
@@ -107,9 +117,8 @@ result_t SandBox::run(exlib::string fname, v8::Local<v8::Array> argv)
         return hr;
 
     Context context(this, fname);
-    std::vector<ExtLoader::arg> extarg(2);
-    extarg[0] = ExtLoader::arg("argv", argv);
-    extarg[1] = ExtLoader::arg("repl", v8::Undefined(holder()->m_isolate));
+    std::vector<ExtLoader::arg> extarg(1);
+    extarg[0] = ExtLoader::arg("__argv", argv);
 
     return l->run_script(&context, bin, fname, extarg, false);
 }

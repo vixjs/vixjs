@@ -10,6 +10,7 @@
 #include "ifs/Message.h"
 #include "ifs/HttpRequest.h"
 #include "parse.h"
+#include "Url.h"
 
 namespace fibjs {
 
@@ -119,10 +120,11 @@ result_t Routing::invoke(object_base* v, obj_ptr<Handler_base>& retVal,
                         Variant vUndefined;
                         for (i = 0; i < rc; i++)
                             if (level[i] == p) {
-                                if (ovector[i * 2 + 1] - ovector[i * 2] > 0)
-                                    list->append(test.substr(ovector[i * 2],
-                                        ovector[i * 2 + 1] - ovector[i * 2]));
-                                else
+                                if (ovector[i * 2 + 1] - ovector[i * 2] > 0) {
+                                    exlib::string p;
+                                    Url::decodeURI(test.substr(ovector[i * 2], ovector[i * 2 + 1] - ovector[i * 2]), p);
+                                    list->append(p);
+                                } else
                                     list->append(vUndefined);
                             }
                     }
@@ -141,14 +143,15 @@ result_t Routing::_append(exlib::string method, v8::Local<v8::Object> map,
     obj_ptr<Routing_base>& retVal)
 {
     Isolate* isolate = holder();
-    JSArray ks = map->GetPropertyNames();
+    v8::Local<v8::Context> context = isolate->context();
+    JSArray ks = map->GetPropertyNames(context);
     int32_t len = ks->Length();
     int32_t i;
     result_t hr;
 
     for (i = 0; i < len; i++) {
-        JSValue k = ks->Get(i);
-        JSValue v = map->Get(k);
+        JSValue k = ks->Get(context, i);
+        JSValue v = map->Get(context, k);
         obj_ptr<Handler_base> hdlr;
         obj_ptr<Routing_base> r;
 
@@ -156,7 +159,7 @@ result_t Routing::_append(exlib::string method, v8::Local<v8::Object> map,
         if (hr < 0)
             return hr;
 
-        append(method, ToCString(v8::String::Utf8Value(isolate->m_isolate, k)), hdlr, r);
+        append(method, isolate->toString(k), hdlr, r);
     }
 
     retVal = this;

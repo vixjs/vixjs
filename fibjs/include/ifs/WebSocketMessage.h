@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _WebSocketMessage_base_H_
-#define _WebSocketMessage_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -85,7 +84,7 @@ void WebSocketMessage_base::__new(const T& args)
 
     METHOD_OVER(4, 0);
 
-    OPT_ARG(int32_t, 0, ws_base::_BINARY);
+    OPT_ARG(int32_t, 0, ws_base::C_BINARY);
     OPT_ARG(bool, 1, true);
     OPT_ARG(bool, 2, false);
     OPT_ARG(int32_t, 3, 67108864);
@@ -170,5 +169,3 @@ inline void WebSocketMessage_base::s_set_maxSize(v8::Local<v8::Name> property, v
     PROPERTY_SET_LEAVE();
 }
 }
-
-#endif

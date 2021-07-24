@@ -5,8 +5,7 @@
  *      Author: lion
  */
 
-#ifndef _fj_HTTPSSERVER_H_
-#define _fj_HTTPSSERVER_H_
+#pragma once
 
 #include "ifs/HttpsServer.h"
 #include "SslServer.h"
@@ -32,6 +31,8 @@ public:
     virtual result_t set_maxHeadersCount(int32_t newVal);
     virtual result_t get_maxBodySize(int32_t& retVal);
     virtual result_t set_maxBodySize(int32_t newVal);
+    virtual result_t get_enableEncoding(bool& retVal);
+    virtual result_t set_enableEncoding(bool newVal);
     virtual result_t get_serverName(exlib::string& retVal);
     virtual result_t set_serverName(exlib::string newVal);
 
@@ -51,5 +52,3 @@ private:
 };
 
 } /* namespace fibjs */
-
-#endif /* _fj_HTTPSSERVER_H_ */

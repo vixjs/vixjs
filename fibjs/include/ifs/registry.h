@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _registry_base_H_
-#define _registry_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -23,15 +22,15 @@ class registry_base : public object_base {
 
 public:
     enum {
-        _CLASSES_ROOT = 0,
-        _CURRENT_USER = 1,
-        _LOCAL_MACHINE = 2,
-        _USERS = 3,
-        _CURRENT_CONFIG = 5,
-        _SZ = 1,
-        _EXPAND_SZ = 2,
-        _DWORD = 4,
-        _QWORD = 11
+        C_CLASSES_ROOT = 0,
+        C_CURRENT_USER = 1,
+        C_LOCAL_MACHINE = 2,
+        C_USERS = 3,
+        C_CURRENT_CONFIG = 5,
+        C_SZ = 1,
+        C_EXPAND_SZ = 2,
+        C_DWORD = 4,
+        C_QWORD = 11
     };
 
 public:
@@ -79,15 +78,15 @@ inline ClassInfo& registry_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "CLASSES_ROOT", _CLASSES_ROOT },
-        { "CURRENT_USER", _CURRENT_USER },
-        { "LOCAL_MACHINE", _LOCAL_MACHINE },
-        { "USERS", _USERS },
-        { "CURRENT_CONFIG", _CURRENT_CONFIG },
-        { "SZ", _SZ },
-        { "EXPAND_SZ", _EXPAND_SZ },
-        { "DWORD", _DWORD },
-        { "QWORD", _QWORD }
+        { "CLASSES_ROOT", C_CLASSES_ROOT },
+        { "CURRENT_USER", C_CURRENT_USER },
+        { "LOCAL_MACHINE", C_LOCAL_MACHINE },
+        { "USERS", C_USERS },
+        { "CURRENT_CONFIG", C_CURRENT_CONFIG },
+        { "SZ", C_SZ },
+        { "EXPAND_SZ", C_EXPAND_SZ },
+        { "DWORD", C_DWORD },
+        { "QWORD", C_QWORD }
     };
 
     static ClassData s_cd = {
@@ -161,7 +160,7 @@ inline void registry_base::s_static_set(const v8::FunctionCallbackInfo<v8::Value
     ARG(int32_t, 0);
     ARG(exlib::string, 1);
     ARG(double, 2);
-    OPT_ARG(int32_t, 3, _DWORD);
+    OPT_ARG(int32_t, 3, C_DWORD);
 
     hr = set(v0, v1, v2, v3);
 
@@ -170,7 +169,7 @@ inline void registry_base::s_static_set(const v8::FunctionCallbackInfo<v8::Value
     ARG(int32_t, 0);
     ARG(exlib::string, 1);
     ARG(exlib::string, 2);
-    OPT_ARG(int32_t, 3, _SZ);
+    OPT_ARG(int32_t, 3, C_SZ);
 
     hr = set(v0, v1, v2, v3);
 
@@ -208,5 +207,3 @@ inline void registry_base::s_static_del(const v8::FunctionCallbackInfo<v8::Value
     METHOD_VOID();
 }
 }
-
-#endif

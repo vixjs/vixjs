@@ -5,31 +5,30 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/XmlText.h"
 #include "XmlNodeImpl.h"
 #include "XmlDataImpl.h"
-
-#ifndef XMLTEXT_H_
-#define XMLTEXT_H_
 
 namespace fibjs {
 
 class XmlText : public XmlText_base, public XmlNodeImpl {
 public:
     XmlText(XmlDocument_base* document, const char* data)
-        : XmlNodeImpl(document, this, xml_base::_TEXT_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_TEXT_NODE)
         , m_data(data)
     {
     }
 
     XmlText(XmlDocument_base* document, exlib::string& data)
-        : XmlNodeImpl(document, this, xml_base::_TEXT_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_TEXT_NODE)
         , m_data(data)
     {
     }
 
     XmlText(const XmlText& from)
-        : XmlNodeImpl(from.m_document, this, xml_base::_TEXT_NODE)
+        : XmlNodeImpl(from.m_document, this, xml_base::C_TEXT_NODE)
         , m_data(from.m_data)
     {
     }
@@ -82,4 +81,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* XMLTEXT_H_ */

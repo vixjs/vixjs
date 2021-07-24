@@ -5,8 +5,7 @@
  *      Author: lion
  */
 
-#ifndef REDIS_H_
-#define REDIS_H_
+#pragma once
 
 #include "ifs/Redis.h"
 #include "ifs/Socket.h"
@@ -130,11 +129,12 @@ public:
 
         result_t add(v8::Local<v8::Array> keys)
         {
+            v8::Local<v8::Context> context = keys->CreationContext();
             result_t hr;
             int32_t i;
 
             for (i = 0; i < (int32_t)keys->Length(); i++) {
-                hr = add(keys->Get(i));
+                hr = add(JSValue(keys->Get(context, i)));
                 if (hr < 0)
                     return hr;
             }
@@ -147,19 +147,21 @@ public:
             if (kvs->IsArray())
                 return CHECK_ERROR(CALL_E_INVALIDARG);
 
-            JSArray keys = kvs->GetPropertyNames();
+            v8::Local<v8::Context> context = kvs->CreationContext();
+
+            JSArray keys = kvs->GetPropertyNames(context);
 
             result_t hr;
             int32_t i;
 
             for (i = 0; i < (int32_t)keys->Length(); i++) {
-                JSValue v = keys->Get(i);
+                JSValue v = keys->Get(context, i);
 
                 hr = add(v);
                 if (hr < 0)
                     return hr;
 
-                hr = add(kvs->Get(v));
+                hr = add(JSValue(kvs->Get(context, v)));
                 if (hr < 0)
                     return hr;
             }
@@ -217,7 +219,7 @@ public:
             sz = sprintf(numStr, "*%d\r\n", (int32_t)m_params.size() / 2);
 
             str.resize(sz + m_size);
-            p = &str[0];
+            p = str.c_buffer();
 
             memcpy(p, numStr, sz);
             p += sz;
@@ -513,4 +515,3 @@ public:
 };
 
 } /* namespace fibjs */
-#endif /* REDIS_H_ */

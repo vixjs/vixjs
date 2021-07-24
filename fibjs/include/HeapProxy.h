@@ -5,13 +5,12 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/HeapSnapshot.h"
 #include "ifs/HeapGraphEdge.h"
 #include <v8/include/v8-profiler.h>
 #include <map>
-
-#ifndef _fj_HEAPPROXY_H
-#define _fj_HEAPPROXY_H
 
 namespace fibjs {
 
@@ -30,7 +29,7 @@ public:
 
     ~HeapSnapshotProxy()
     {
-        requestIsolateRun(holder(), del_, m_snapshot);
+        syncCall(holder(), del_, m_snapshot);
     }
 
 public:
@@ -96,5 +95,3 @@ private:
     const v8::HeapGraphEdge* m_edge;
 };
 }
-
-#endif // _fj_HEAPPROXY_H

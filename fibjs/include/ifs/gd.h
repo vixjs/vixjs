@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _gd_base_H_
-#define _gd_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -25,35 +24,35 @@ class gd_base : public object_base {
 
 public:
     enum {
-        _NONE = 0,
-        _JPEG = 1,
-        _GIF = 2,
-        _PNG = 3,
-        _TIFF = 4,
-        _BMP = 5,
-        _WEBP = 6,
-        _TRUECOLOR = 0,
-        _PALETTE = 1,
-        _ARC = 0,
-        _CHORD = 1,
-        _NOFILL = 2,
-        _EDGED = 4,
-        _HORIZONTAL = 1,
-        _VERTICAL = 2,
-        _BOTH = 3,
-        _LEFT = 1,
-        _RIGHT = 2,
-        _MEAN_REMOVAL = 0,
-        _EDGEDETECT = 1,
-        _EMBOSS = 2,
-        _SELECTIVE_BLUR = 3,
-        _GAUSSIAN_BLUR = 4,
-        _NEGATE = 5,
-        _GRAYSCALE = 6,
-        _SMOOTH = 7,
-        _BRIGHTNESS = 8,
-        _CONTRAST = 9,
-        _COLORIZE = 10
+        C_NONE = 0,
+        C_JPEG = 1,
+        C_GIF = 2,
+        C_PNG = 3,
+        C_TIFF = 4,
+        C_BMP = 5,
+        C_WEBP = 6,
+        C_TRUECOLOR = 0,
+        C_PALETTE = 1,
+        C_ARC = 0,
+        C_CHORD = 1,
+        C_NOFILL = 2,
+        C_EDGED = 4,
+        C_HORIZONTAL = 1,
+        C_VERTICAL = 2,
+        C_BOTH = 3,
+        C_LEFT = 1,
+        C_RIGHT = 2,
+        C_MEAN_REMOVAL = 0,
+        C_EDGEDETECT = 1,
+        C_EMBOSS = 2,
+        C_SELECTIVE_BLUR = 3,
+        C_GAUSSIAN_BLUR = 4,
+        C_NEGATE = 5,
+        C_GRAYSCALE = 6,
+        C_SMOOTH = 7,
+        C_BRIGHTNESS = 8,
+        C_CONTRAST = 9,
+        C_COLORIZE = 10
     };
 
 public:
@@ -122,35 +121,35 @@ inline ClassInfo& gd_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "NONE", _NONE },
-        { "JPEG", _JPEG },
-        { "GIF", _GIF },
-        { "PNG", _PNG },
-        { "TIFF", _TIFF },
-        { "BMP", _BMP },
-        { "WEBP", _WEBP },
-        { "TRUECOLOR", _TRUECOLOR },
-        { "PALETTE", _PALETTE },
-        { "ARC", _ARC },
-        { "CHORD", _CHORD },
-        { "NOFILL", _NOFILL },
-        { "EDGED", _EDGED },
-        { "HORIZONTAL", _HORIZONTAL },
-        { "VERTICAL", _VERTICAL },
-        { "BOTH", _BOTH },
-        { "LEFT", _LEFT },
-        { "RIGHT", _RIGHT },
-        { "MEAN_REMOVAL", _MEAN_REMOVAL },
-        { "EDGEDETECT", _EDGEDETECT },
-        { "EMBOSS", _EMBOSS },
-        { "SELECTIVE_BLUR", _SELECTIVE_BLUR },
-        { "GAUSSIAN_BLUR", _GAUSSIAN_BLUR },
-        { "NEGATE", _NEGATE },
-        { "GRAYSCALE", _GRAYSCALE },
-        { "SMOOTH", _SMOOTH },
-        { "BRIGHTNESS", _BRIGHTNESS },
-        { "CONTRAST", _CONTRAST },
-        { "COLORIZE", _COLORIZE }
+        { "NONE", C_NONE },
+        { "JPEG", C_JPEG },
+        { "GIF", C_GIF },
+        { "PNG", C_PNG },
+        { "TIFF", C_TIFF },
+        { "BMP", C_BMP },
+        { "WEBP", C_WEBP },
+        { "TRUECOLOR", C_TRUECOLOR },
+        { "PALETTE", C_PALETTE },
+        { "ARC", C_ARC },
+        { "CHORD", C_CHORD },
+        { "NOFILL", C_NOFILL },
+        { "EDGED", C_EDGED },
+        { "HORIZONTAL", C_HORIZONTAL },
+        { "VERTICAL", C_VERTICAL },
+        { "BOTH", C_BOTH },
+        { "LEFT", C_LEFT },
+        { "RIGHT", C_RIGHT },
+        { "MEAN_REMOVAL", C_MEAN_REMOVAL },
+        { "EDGEDETECT", C_EDGEDETECT },
+        { "EMBOSS", C_EMBOSS },
+        { "SELECTIVE_BLUR", C_SELECTIVE_BLUR },
+        { "GAUSSIAN_BLUR", C_GAUSSIAN_BLUR },
+        { "NEGATE", C_NEGATE },
+        { "GRAYSCALE", C_GRAYSCALE },
+        { "SMOOTH", C_SMOOTH },
+        { "BRIGHTNESS", C_BRIGHTNESS },
+        { "CONTRAST", C_CONTRAST },
+        { "COLORIZE", C_COLORIZE }
     };
 
     static ClassData s_cd = {
@@ -174,7 +173,7 @@ inline void gd_base::s_static_create(const v8::FunctionCallbackInfo<v8::Value>& 
 
     ARG(int32_t, 0);
     ARG(int32_t, 1);
-    OPT_ARG(int32_t, 2, gd_base::_TRUECOLOR);
+    OPT_ARG(int32_t, 2, gd_base::C_TRUECOLOR);
 
     if (!cb.IsEmpty())
         hr = acb_create(v0, v1, v2, cb, args);
@@ -348,5 +347,3 @@ inline void gd_base::s_static_color(const v8::FunctionCallbackInfo<v8::Value>& a
     METHOD_RETURN();
 }
 }
-
-#endif

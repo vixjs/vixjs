@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "object.h"
 #include "ifs/console.h"
+#include <uv/include/uv.h>
 #include <string.h>
 #include <stdio.h>
 #include "utf8.h"
@@ -15,10 +16,34 @@ static exlib::string fmtString(result_t hr, const char* str, int32_t len = -1)
         len = (int32_t)qstrlen(str);
 
     s.resize(len + 16);
-    s.resize(sprintf(&s[0], "[%d] %s", hr, str));
+    s.resize(sprintf(s.c_buffer(), "[%d] %s", hr, str));
 
     return s;
 }
+
+#define UV_STRERROR_GEN(name, msg) \
+    case UV_##name:                \
+        return msg;
+static const char* uv_error(int err)
+{
+    switch (err) {
+        UV_ERRNO_MAP(UV_STRERROR_GEN)
+    }
+    return NULL;
+}
+#undef UV_STRERROR_GEN
+
+#define UV_ERR_NAME_GEN(name, _) \
+    case UV_##name:              \
+        return #name;
+static const char* uv_error_name(int err)
+{
+    switch (err) {
+        UV_ERRNO_MAP(UV_ERR_NAME_GEN)
+    }
+    return NULL;
+}
+#undef UV_ERR_NAME_GEN
 
 exlib::string getResultMessage(result_t hr)
 {
@@ -87,7 +112,11 @@ exlib::string getResultMessage(result_t hr)
     }
 
     if (hr > CALL_E_MIN && hr < CALL_E_MAX)
-        return fmtString(hr, s_errors[CALL_E_MAX - hr]);
+        return fmtString(-hr, s_errors[CALL_E_MAX - hr]);
+
+    const char* uv_str = uv_error(hr);
+    if (uv_str)
+        return fmtString(-hr, uv_str);
 
     hr = -hr;
 
@@ -113,9 +142,16 @@ exlib::string getResultMessage(result_t hr)
 v8::Local<v8::Value> ThrowResult(result_t hr)
 {
     Isolate* isolate = Isolate::current();
-    v8::Local<v8::Value> e = v8::Exception::Error(
+    v8::Local<v8::Value> v = v8::Exception::Error(
         isolate->NewString(getResultMessage(hr)));
-    isolate->toLocalObject(e)->Set(isolate->NewString("number"), v8::Int32::New(isolate->m_isolate, -hr));
+    v8::Local<v8::Object> e = v8::Local<v8::Object>::Cast(v);
+    v8::Local<v8::Context> context = isolate->context();
+
+    e->Set(context, isolate->NewString("number"), v8::Int32::New(isolate->m_isolate, -hr));
+
+    const char* _name = uv_error_name(hr);
+    if (_name)
+        e->Set(context, isolate->NewString("code"), isolate->NewString(_name));
 
     return isolate->m_isolate->ThrowException(e);
 }
@@ -127,19 +163,16 @@ exlib::string GetException(TryCatch& try_catch, result_t hr, bool repl)
 
     Isolate* isolate = Isolate::current();
     v8::HandleScope handle_scope(isolate->m_isolate);
-    v8::Local<v8::Context> context = isolate->m_isolate->GetCurrentContext();
+    v8::Local<v8::Context> context = isolate->context();
     if (try_catch.HasCaught()) {
         v8::Local<v8::Value> err = try_catch.Exception();
         v8::Local<v8::Object> err_obj = err.As<v8::Object>();
-        v8::String::Utf8Value exception(isolate->m_isolate, err_obj);
         v8::Local<v8::Message> message = try_catch.Message();
 
         if (message.IsEmpty())
-            return ToCString(exception);
+            return isolate->toString(err_obj);
 
-        exlib::string strError;
-        v8::String::Utf8Value filename(isolate->m_isolate, message->GetScriptResourceName());
-        strError.append(ToCString(filename));
+        exlib::string strError(isolate->toString(message->GetScriptResourceName()));
         int32_t lineNumber = message->GetLineNumber(context).ToChecked();
         if (lineNumber > 0) {
             char numStr[32];
@@ -177,9 +210,7 @@ exlib::string GetException(TryCatch& try_catch, result_t hr, bool repl)
         if (err_obj->IsNativeError()) {
             v8::Local<v8::Value> stack_trace_string;
             try_catch.StackTrace(context).ToLocal(&stack_trace_string);
-            v8::String::Utf8Value stack_trace(isolate->m_isolate,
-                stack_trace_string.As<v8::String>());
-            strError.append(ToCString(stack_trace));
+            strError.append(isolate->toString(stack_trace_string));
         } else {
             JSValue message;
             JSValue name;
@@ -189,21 +220,18 @@ exlib::string GetException(TryCatch& try_catch, result_t hr, bool repl)
             }
 
             if (!repl && err->IsObject()) {
-                message = err_obj->Get(isolate->NewString("message"));
-                name = err_obj->Get(isolate->NewString("name"));
+                message = err_obj->Get(context, isolate->NewString("message"));
+                name = err_obj->Get(context, isolate->NewString("name"));
             }
 
             if (message.IsEmpty() || message->IsUndefined() || name.IsEmpty() || name->IsUndefined()) {
                 // Not an error object. Just print as-is.
-                v8::String::Utf8Value message(isolate->m_isolate, err);
-                strError.append(ToCString(message));
+                strError.append(isolate->toString(err));
                 strError.append("\n");
             } else {
-                v8::String::Utf8Value message_string(isolate->m_isolate, message);
-                v8::String::Utf8Value name_string(isolate->m_isolate, name);
-                strError.append(ToCString(name_string));
+                strError.append(isolate->toString(name));
                 strError.append(": ");
-                strError.append(ToCString(message_string));
+                strError.append(isolate->toString(message));
             }
         }
 
@@ -216,11 +244,10 @@ exlib::string GetException(TryCatch& try_catch, result_t hr, bool repl)
 result_t throwSyntaxError(TryCatch& try_catch)
 {
     Isolate* isolate = Isolate::current();
-    v8::String::Utf8Value exception(isolate->m_isolate, try_catch.Exception());
 
     v8::Local<v8::Message> message = try_catch.Message();
     if (message.IsEmpty())
-        ThrowError(ToCString(exception));
+        ThrowError(isolate->toString(try_catch.Exception()));
     else {
         return Runtime::setError(GetException(try_catch, 0));
     }
@@ -242,13 +269,14 @@ exlib::string ReportException(TryCatch& try_catch, result_t hr, bool repl)
 
 result_t CheckConfig(v8::Local<v8::Object> opts, const char** keys)
 {
-    JSArray ks = opts->GetPropertyNames();
+    v8::Local<v8::Context> context = opts->CreationContext();
+    JSArray ks = opts->GetPropertyNames(context);
     int32_t len = ks->Length();
     int32_t i;
     Isolate* isolate = Isolate::current();
 
     for (i = 0; i < len; i++) {
-        v8::String::Utf8Value k(isolate->m_isolate, JSValue(ks->Get(i)));
+        v8::String::Utf8Value k(isolate->m_isolate, JSValue(ks->Get(context, i)));
         const char** p = keys;
 
         while (p[0]) {
@@ -426,5 +454,4 @@ const char* signo_string(int signo)
         return "";
     }
 }
-
 }

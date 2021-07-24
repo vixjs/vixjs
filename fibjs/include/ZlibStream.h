@@ -5,13 +5,12 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/zlib.h"
 #include "Buffer.h"
 #include "MemoryStream.h"
 #include <zlib/include/zlib.h>
-
-#ifndef __ZLIBSTREAM_H_
-#define __ZLIBSTREAM_H_
 
 namespace fibjs {
 
@@ -322,6 +321,11 @@ public:
     def(Stream_base* stm, int32_t level = -1)
         : def_base(stm)
     {
+        if (level < zlib_base::C_DEFAULT_COMPRESSION)
+            level = zlib_base::C_DEFAULT_COMPRESSION;
+        else if (level > zlib_base::C_BEST_COMPRESSION)
+            level = zlib_base::C_BEST_COMPRESSION;
+
         deflateInit(&strm, level);
     }
 };
@@ -363,4 +367,3 @@ public:
 };
 
 } /* namespace fibjs */
-#endif /* __ZLIBSTREAM_H_ */

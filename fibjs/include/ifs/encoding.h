@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _encoding_base_H_
-#define _encoding_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -18,12 +17,10 @@ namespace fibjs {
 
 class base32_base;
 class base64_base;
-class base64vlq_base;
 class hex_base;
 class iconv_base;
 class json_base;
 class msgpack_base;
-class bson_base;
 
 class encoding_base : public object_base {
     DECLARE_CLASS(encoding_base);
@@ -56,12 +53,10 @@ public:
 
 #include "ifs/base32.h"
 #include "ifs/base64.h"
-#include "ifs/base64vlq.h"
 #include "ifs/hex.h"
 #include "ifs/iconv.h"
 #include "ifs/json.h"
 #include "ifs/msgpack.h"
-#include "ifs/bson.h"
 
 namespace fibjs {
 inline ClassInfo& encoding_base::class_info()
@@ -76,12 +71,10 @@ inline ClassInfo& encoding_base::class_info()
     static ClassData::ClassObject s_object[] = {
         { "base32", base32_base::class_info },
         { "base64", base64_base::class_info },
-        { "base64vlq", base64vlq_base::class_info },
         { "hex", hex_base::class_info },
         { "iconv", iconv_base::class_info },
         { "json", json_base::class_info },
-        { "msgpack", msgpack_base::class_info },
-        { "bson", bson_base::class_info }
+        { "msgpack", msgpack_base::class_info }
     };
 
     static ClassData s_cd = {
@@ -159,5 +152,3 @@ inline void encoding_base::s_static_decodeURI(const v8::FunctionCallbackInfo<v8:
     METHOD_RETURN();
 }
 }
-
-#endif

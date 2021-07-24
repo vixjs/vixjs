@@ -7,7 +7,6 @@
 
 #include "object.h"
 #include "version.h"
-#include "exlib/include/hrtime.h"
 #include "ifs/process.h"
 #include "ifs/os.h"
 #include "ifs/global.h"
@@ -26,7 +25,6 @@
 #include <io.h>
 
 #include "utf8.h"
-#include "process_win.h"
 #else
 
 #include <unistd.h>
@@ -88,10 +86,11 @@ void init_argv(int32_t argc, char** argv)
 result_t process_base::get_argv(v8::Local<v8::Array>& retVal)
 {
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
     v8::Local<v8::Array> args = v8::Array::New(isolate->m_isolate, (int32_t)s_argv.size());
 
     for (int32_t i = 0; i < (int32_t)s_argv.size(); i++)
-        args->Set(i, isolate->NewString(s_argv[i]));
+        args->Set(context, i, isolate->NewString(s_argv[i]));
 
     retVal = args;
 
@@ -101,11 +100,12 @@ result_t process_base::get_argv(v8::Local<v8::Array>& retVal)
 result_t process_base::get_execArgv(v8::Local<v8::Array>& retVal)
 {
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
     v8::Local<v8::Array> args = v8::Array::New(isolate->m_isolate, (int32_t)s_start_argv.size());
     int32_t i;
 
     for (i = 0; i < (int32_t)s_start_argv.size(); i++)
-        args->Set(i, isolate->NewString(s_start_argv[i]));
+        args->Set(context, i, isolate->NewString(s_start_argv[i]));
 
     retVal = args;
 
@@ -167,21 +167,24 @@ result_t process_base::umask(int32_t& retVal)
     return 0;
 }
 
+#define NANOS_PER_SEC 1000000000LL
+
 result_t process_base::hrtime(v8::Local<v8::Array> diff, v8::Local<v8::Array>& retVal)
 {
-    uint64_t t = exlib::_hrtime();
+    uint64_t t = uv_hrtime();
 
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
 
     if (diff->Length() == 2) {
-        uint64_t seconds = isolate->toUint32Value(JSValue(diff->Get(0)));
-        uint64_t nanos = isolate->toUint32Value(JSValue(diff->Get(1)));
+        uint64_t seconds = isolate->toUint32Value(JSValue(diff->Get(context, 0)));
+        uint64_t nanos = isolate->toUint32Value(JSValue(diff->Get(context, 1)));
         t -= (seconds * NANOS_PER_SEC) + nanos;
     }
 
     v8::Local<v8::Array> tuple = v8::Array::New(isolate->m_isolate, 2);
-    tuple->Set(0, v8::Integer::NewFromUnsigned(isolate->m_isolate, (uint32_t)(t / NANOS_PER_SEC)));
-    tuple->Set(1, v8::Integer::NewFromUnsigned(isolate->m_isolate, t % NANOS_PER_SEC));
+    tuple->Set(context, 0, v8::Integer::NewFromUnsigned(isolate->m_isolate, (uint32_t)(t / NANOS_PER_SEC)));
+    tuple->Set(context, 1, v8::Integer::NewFromUnsigned(isolate->m_isolate, t % NANOS_PER_SEC));
 
     retVal = tuple;
 
@@ -196,6 +199,7 @@ result_t process_base::get_execPath(exlib::string& retVal)
 result_t process_base::get_env(v8::Local<v8::Object>& retVal)
 {
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
 
     if (isolate->m_env.IsEmpty()) {
         v8::Local<v8::Object> o = v8::Object::New(isolate->m_isolate);
@@ -205,7 +209,7 @@ result_t process_base::get_env(v8::Local<v8::Object>& retVal)
         while ((p = *env++) != NULL) {
             p1 = qstrchr(p, '=');
             if (p1)
-                o->Set(isolate->NewString(p, (int32_t)(p1 - p)), isolate->NewString(p1 + 1));
+                o->Set(context, isolate->NewString(p, (int32_t)(p1 - p)), isolate->NewString(p1 + 1));
         }
 
         isolate->m_env.Reset(isolate->m_isolate, o);
@@ -228,55 +232,33 @@ result_t process_base::get_platform(exlib::string& retVal)
 
 result_t process_base::get_pid(int32_t& retVal)
 {
-#ifdef _WIN32
-    retVal = GetCurrentProcessId();
-#else
-    retVal = getpid();
-#endif
-
+    retVal = uv_os_getpid();
     return 0;
 }
 
 result_t process_base::get_ppid(int32_t& retVal)
 {
-#ifdef _WIN32
-    retVal = (int32_t)GetParentProcessID();
-#else
-    retVal = getppid();
-#endif
-
+    retVal = uv_os_getppid();
     return 0;
 }
 
 result_t process_base::get_stdin(obj_ptr<Stream_base>& retVal)
 {
-    Isolate* isolate = Isolate::current();
-
-    if (!isolate->m_stdin)
-        isolate->m_stdin = new UVStream(_fileno(stdin));
-    retVal = isolate->m_stdin;
+    Isolate::current()->get_stdin(retVal);
 
     return 0;
 }
 
 result_t process_base::get_stdout(obj_ptr<Stream_base>& retVal)
 {
-    Isolate* isolate = Isolate::current();
-
-    if (!isolate->m_stdout)
-        isolate->m_stdout = new UVStream(_fileno(stdout));
-    retVal = isolate->m_stdout;
+    Isolate::current()->get_stdout(retVal);
 
     return 0;
 }
 
 result_t process_base::get_stderr(obj_ptr<Stream_base>& retVal)
 {
-    Isolate* isolate = Isolate::current();
-
-    if (!isolate->m_stderr)
-        isolate->m_stderr = new UVStream(_fileno(stderr));
-    retVal = isolate->m_stderr;
+    Isolate::current()->get_stderr(retVal);
 
     return 0;
 }
@@ -304,13 +286,12 @@ result_t process_base::exit()
 
     gui_flush();
 
-#ifdef _WIN32
-    TerminateProcess(GetCurrentProcess(), code);
-#else
+#ifndef _WIN32
     if (g_in_readline && isatty(_fileno(stdin)))
         rl_deprep_terminal();
-    ::_exit(code);
 #endif
+
+    ::exit(code);
 
     return 0;
 }
@@ -330,6 +311,26 @@ result_t process_base::memoryUsage(v8::Local<v8::Object>& retVal)
 result_t process_base::uptime(double& retVal)
 {
     return os_base::uptime(retVal);
+}
+
+result_t process_base::cwd(exlib::string& retVal)
+{
+    char buf[1024] = "";
+    size_t size = sizeof(buf);
+
+    if (uv_cwd(buf, &size))
+        return CHECK_ERROR(LastError());
+
+    retVal = buf;
+    return 0;
+}
+
+result_t process_base::chdir(exlib::string directory)
+{
+    if (uv_chdir(directory.c_str()))
+        return CHECK_ERROR(LastError());
+
+    return 0;
 }
 
 result_t process_base::nextTick(v8::Local<v8::Function> func, OptArgs args)

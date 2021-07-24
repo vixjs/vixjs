@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _HttpHandler_base_H_
-#define _HttpHandler_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -30,6 +29,8 @@ public:
     virtual result_t set_maxHeadersCount(int32_t newVal) = 0;
     virtual result_t get_maxBodySize(int32_t& retVal) = 0;
     virtual result_t set_maxBodySize(int32_t newVal) = 0;
+    virtual result_t get_enableEncoding(bool& retVal) = 0;
+    virtual result_t set_enableEncoding(bool newVal) = 0;
     virtual result_t get_serverName(exlib::string& retVal) = 0;
     virtual result_t set_serverName(exlib::string newVal) = 0;
     virtual result_t get_handler(obj_ptr<Handler_base>& retVal) = 0;
@@ -46,6 +47,8 @@ public:
     static void s_set_maxHeadersCount(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& args);
     static void s_get_maxBodySize(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
     static void s_set_maxBodySize(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& args);
+    static void s_get_enableEncoding(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
+    static void s_set_enableEncoding(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& args);
     static void s_get_serverName(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
     static void s_set_serverName(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& args);
     static void s_get_handler(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args);
@@ -63,6 +66,7 @@ inline ClassInfo& HttpHandler_base::class_info()
     static ClassData::ClassProperty s_property[] = {
         { "maxHeadersCount", s_get_maxHeadersCount, s_set_maxHeadersCount, false },
         { "maxBodySize", s_get_maxBodySize, s_set_maxBodySize, false },
+        { "enableEncoding", s_get_enableEncoding, s_set_enableEncoding, false },
         { "serverName", s_get_serverName, s_set_serverName, false },
         { "handler", s_get_handler, s_set_handler, false }
     };
@@ -165,6 +169,31 @@ inline void HttpHandler_base::s_set_maxBodySize(v8::Local<v8::Name> property, v8
     PROPERTY_SET_LEAVE();
 }
 
+inline void HttpHandler_base::s_get_enableEncoding(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args)
+{
+    bool vr;
+
+    METHOD_NAME("HttpHandler.enableEncoding");
+    METHOD_INSTANCE(HttpHandler_base);
+    PROPERTY_ENTER();
+
+    hr = pInst->get_enableEncoding(vr);
+
+    METHOD_RETURN();
+}
+
+inline void HttpHandler_base::s_set_enableEncoding(v8::Local<v8::Name> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& args)
+{
+    METHOD_NAME("HttpHandler.enableEncoding");
+    METHOD_INSTANCE(HttpHandler_base);
+    PROPERTY_ENTER();
+    PROPERTY_VAL(bool);
+
+    hr = pInst->set_enableEncoding(v0);
+
+    PROPERTY_SET_LEAVE();
+}
+
 inline void HttpHandler_base::s_get_serverName(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value>& args)
 {
     exlib::string vr;
@@ -215,5 +244,3 @@ inline void HttpHandler_base::s_set_handler(v8::Local<v8::Name> property, v8::Lo
     PROPERTY_SET_LEAVE();
 }
 }
-
-#endif

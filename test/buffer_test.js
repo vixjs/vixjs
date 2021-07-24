@@ -1,6 +1,10 @@
 var test = require("test");
 test.setup();
 
+var os = require("os");
+
+var is_big_endian = os.endianness() === 'BE';
+
 describe('Buffer', () => {
     it("buffer module", () => {
         assert.equal(require('buffer'), Buffer);
@@ -68,7 +72,7 @@ describe('Buffer', () => {
         var buf = new Buffer(arr.buffer);
 
         assert.equal(buf.length, 4);
-        assert.equal(buf.hex(), "8813a00f");
+        assert.equal(buf.hex(), is_big_endian ? "13880fa0" : "8813a00f");
     });
 
     it('new Buffer(ArrayBufferView)', () => {
@@ -143,7 +147,7 @@ describe('Buffer', () => {
         buf1 = new Buffer('');
         bufArray = [buf1];
         assert.doesNotThrow(() => {
-            bufRes = Buffer.concat([() => {}, {}, undefined, '']);
+            bufRes = Buffer.concat([() => { }, {}, undefined, '']);
         });
     });
 
@@ -166,30 +170,91 @@ describe('Buffer', () => {
             Buffer.from(expected));
         assert.deepEqual(Buffer.from('__--_--_--__', 'base64'),
             Buffer.from(expected));
+    });
 
-        ['ucs2', 'ucs-2', 'utf16le', 'utf-16le'].forEach((encoding) => {
+    it('Buffer.from(String, ucs2)', () => {
+        var ucs2_codec = ['ucs2', 'ucs-2', 'utf16', 'utf-16'];
+        var ucs2le_codec = ['ucs2le', 'ucs-2le', 'utf16le', 'utf-16le'];
+        var ucs2be_codec = ['ucs2be', 'ucs-2be', 'utf16be', 'utf-16be'];
+
+        if (is_big_endian)
+            ucs2be_codec = ucs2be_codec.concat(ucs2_codec);
+        else
+            ucs2le_codec = ucs2le_codec.concat(ucs2_codec);
+
+        ucs2le_codec.forEach((encoding) => {
             {
                 // Test for proper UTF16LE encoding, length should be 8
                 const f = Buffer.from('über', encoding);
                 assert.deepEqual(f, Buffer.from([252, 0, 98, 0, 101, 0, 114, 0]));
+                assert.strictEqual(f.toString(encoding), 'über');
             }
 
             {
                 // Length should be 12
                 const f = Buffer.from('привет', encoding);
-                assert.deepEqual(
-                    f, Buffer.from([63, 4, 64, 4, 56, 4, 50, 4, 53, 4, 66, 4])
-                );
+                assert.deepEqual(f, Buffer.from([63, 4, 64, 4, 56, 4, 50, 4, 53, 4, 66, 4]));
                 assert.strictEqual(f.toString(encoding), 'привет');
             }
-            // todo fix the half char write case
-            //             {
-            //                 const f = Buffer.from([0, 0, 0, 0, 0]);
-            //                 assert.strictEqual(f.length, 5);
-            //                 const size = f.write('あいうえお', encoding);
-            //                 assert.strictEqual(size, 4);
-            //                 assert.deepEqual(f, Buffer.from([0x42, 0x30, 0x44, 0x30, 0x00]));
-            //             }
+        });
+
+        ucs2be_codec.forEach((encoding) => {
+            {
+                // Test for proper UTF16LE encoding, length should be 8
+                const f = Buffer.from('über', encoding);
+                assert.deepEqual(f, Buffer.from([0, 252, 0, 98, 0, 101, 0, 114]));
+                assert.strictEqual(f.toString(encoding), 'über');
+            }
+
+            {
+                // Length should be 12
+                const f = Buffer.from('привет', encoding);
+                assert.deepEqual(f, Buffer.from([4, 63, 4, 64, 4, 56, 4, 50, 4, 53, 4, 66]));
+                assert.strictEqual(f.toString(encoding), 'привет');
+            }
+        });
+    });
+
+    it('Buffer.from(String, ucs4)', () => {
+        var ucs4_codec = ['ucs4', 'ucs-4', 'utf32', 'utf-32'];
+        var ucs4le_codec = ['ucs4le', 'ucs-4le', 'utf32le', 'utf-32le'];
+        var ucs4be_codec = ['ucs4be', 'ucs-4be', 'utf32be', 'utf-32be'];
+
+        if (is_big_endian)
+            ucs4be_codec = ucs4be_codec.concat(ucs4_codec);
+        else
+            ucs4le_codec = ucs4le_codec.concat(ucs4_codec);
+
+        ucs4le_codec.forEach((encoding) => {
+            {
+                // Test for proper UTF16LE encoding, length should be 8
+                const f = Buffer.from('über', encoding);
+                assert.deepEqual(f, Buffer.from([252, 0, 0, 0, 98, 0, 0, 0, 101, 0, 0, 0, 114, 0, 0, 0]));
+                assert.strictEqual(f.toString(encoding), 'über');
+            }
+
+            {
+                // Length should be 12
+                const f = Buffer.from('привет', encoding);
+                assert.deepEqual(f, Buffer.from([63, 4, 0, 0, 64, 4, 0, 0, 56, 4, 0, 0, 50, 4, 0, 0, 53, 4, 0, 0, 66, 4, 0, 0]));
+                assert.strictEqual(f.toString(encoding), 'привет');
+            }
+        });
+
+        ucs4be_codec.forEach((encoding) => {
+            {
+                // Test for proper UTF16LE encoding, length should be 8
+                const f = Buffer.from('über', encoding);
+                assert.deepEqual(f, Buffer.from([0, 0, 0, 252, 0, 0, 0, 98, 0, 0, 0, 101, 0, 0, 0, 114]));
+                assert.strictEqual(f.toString(encoding), 'über');
+            }
+
+            {
+                // Length should be 12
+                const f = Buffer.from('привет', encoding);
+                assert.deepEqual(f, Buffer.from([0, 0, 4, 63, 0, 0, 4, 64, 0, 0, 4, 56, 0, 0, 4, 50, 0, 0, 4, 53, 0, 0, 4, 66]));
+                assert.strictEqual(f.toString(encoding), 'привет');
+            }
         });
     });
 
@@ -218,7 +283,7 @@ describe('Buffer', () => {
         var buf = Buffer.from(arr.buffer);
 
         assert.equal(buf.length, 4);
-        assert.equal(buf.hex(), "8813a00f");
+        assert.equal(buf.hex(), is_big_endian ? "13880fa0" : "8813a00f");
     });
 
     it('Buffer.from(Buffer)', () => {
@@ -238,6 +303,26 @@ describe('Buffer', () => {
 
         var buf = Buffer.from(new Buffer("abcd"), 10);
         assert.equal(buf.length, 0);
+    });
+
+    it('Buffer.from encoding', () => {
+        var txts = ['abc',
+            '\u0222aa',
+            'a\u0234b\u0235c\u0236'];
+
+        var results = {
+            utf8: ['616263', 'c8a26161', '61c8b462c8b563c8b6'],
+            ucs2: ['610062006300', '220261006100', '610034026200350263003602'],
+            binary: ['616263', '226161', '613462356336'],
+            latin1: ['616263', '226161', '613462356336']
+        };
+
+        ['utf8', 'ucs2', 'binary', 'latin1'].forEach(codec => {
+            var rs = results[codec];
+            txts.forEach((txt, i) => {
+                assert.equal(Buffer.from(txt, codec).toString('hex'), rs[i]);
+            })
+        });
     });
 
     it('Buffer.byteLength(String)', () => {
@@ -286,8 +371,8 @@ describe('Buffer', () => {
 
     it('Buffer.byteLength(other)', () => {
         assert.equal(Buffer.byteLength({}), 15);
-        assert.equal(Buffer.byteLength(function () {}), 14);
-        assert.equal(Buffer.byteLength(() => {}), 8);
+        assert.equal(Buffer.byteLength(function () { }), 15);
+        assert.equal(Buffer.byteLength(() => { }), 9);
         assert.equal(Buffer.byteLength([]), 0);
     });
 
@@ -347,6 +432,26 @@ describe('Buffer', () => {
         assert.equal(Buffer.isEncoding('big5'), true);
     });
 
+    it('@iterator', () => {
+        var buf1 = new Buffer("buffer");
+        var buf2 = new Buffer([98, 117, 102, 102, 101, 114]);
+        var correctResult = [98, 117, 102, 102, 101, 114];
+        var values1 = [];
+        var values2 = [];
+        for (let value of buf1[Symbol.iterator]()) {
+            values1.push(value);
+        }
+        assert.deepEqual(values1, correctResult);
+
+        for (let value of buf2[Symbol.iterator]()) {
+            values2.push(value);
+        }
+        assert.deepEqual(values2, correctResult);
+
+        var it = buf1[Symbol.iterator]();
+        assert.equal(it, it[Symbol.iterator]());
+    });
+
     it('keys', () => {
         var buf1 = new Buffer("buffer");
         var buf2 = new Buffer([98, 117, 102, 102, 101, 114]);
@@ -362,6 +467,9 @@ describe('Buffer', () => {
             keys2.push(key);
         }
         assert.deepEqual(keys2, correctResult);
+
+        var it = buf1.keys();
+        assert.equal(it, it[Symbol.iterator]());
     });
 
     it('values', () => {
@@ -379,6 +487,9 @@ describe('Buffer', () => {
             values2.push(value);
         }
         assert.deepEqual(values2, correctResult);
+
+        var it = buf1.values();
+        assert.equal(it, it[Symbol.iterator]());
     });
 
     it('entries', () => {
@@ -403,6 +514,9 @@ describe('Buffer', () => {
             entries2.push(value);
         }
         assert.deepEqual(entries2, correctResult);
+
+        var it = buf1.entries();
+        assert.equal(it, it[Symbol.iterator]());
     });
 
     it('toArray', () => {
@@ -437,7 +551,7 @@ describe('Buffer', () => {
         assert.equal(buf1.toString(), 'this is a tést');
         assert.equal(buf1.toString('ascii'), 'this is a tC)st');
 
-        assert.equal(buf1.toString('ucs2'), '桴獩椠⁳⁡썴玩');
+        assert.equal(buf1.toString('ucs2le'), '桴獩椠⁳⁡썴玩');
 
         assert.strictEqual(Buffer.from([0x41]).toString('utf8', -1), 'A');
         assert.strictEqual(Buffer.from([0x41]).toString('utf8', 1), '');
@@ -551,6 +665,7 @@ describe('Buffer', () => {
         assert.equal(buf.slice(6, 5), "");
         assert.equal(buf.slice(0, 11), "abcdefghih");
         assert.equal(buf.slice(8), "ih");
+        assert.equal(buf.slice(-20, 2), "ab");
 
         var buf = new Buffer('buffer'); //TODO slice 反向的支持
         assert.equal(buf.slice(-6, -1), 'buffe');
@@ -637,9 +752,6 @@ describe('Buffer', () => {
         assert.equal(buf.readUInt16BE(), 9026);
         assert.equal(buf.readUInt16LE(), 16931);
 
-        assert.equal(buf.readUInt16BE(1, true), 16896);
-        assert.equal(buf.readUInt16LE(1, true), 66);
-
         assert.throws(() => {
             buf.readUInt16BE(1);
         });
@@ -723,14 +835,6 @@ describe('Buffer', () => {
 
         assert.equal(buf.writeUInt16BE(9026n, 0), 2);
         assert.equal(buf.readUInt16BE(), 9026);
-
-        buf[1] = 0x00;
-        assert.equal(buf.writeUInt16BE(16896, 1, true), 2);
-        assert.equal(buf[1], 0x42);
-
-        buf[1] = 0x00;
-        assert.equal(buf.writeUInt16LE(66, 1, true), 2);
-        assert.equal(buf[1], 0x42);
 
         assert.equal(buf.length, 2);
 
@@ -1037,37 +1141,37 @@ describe('Buffer', () => {
     });
 
     var fixtures = [{
-            "a": "ffff00",
-            "expected": "00ffff"
-        },
-        {
-            "a": "ffff",
-            "expected": "ffff"
-        },
-        {
-            "a": "0000",
-            "expected": "0000"
-        },
-        {
-            "a": "0000ff",
-            "expected": "ff0000"
-        },
-        {
-            "a": "000000",
-            "expected": "000000"
-        },
-        {
-            "a": "ffffff",
-            "expected": "ffffff"
-        },
-        {
-            "a": "00ffff00ff",
-            "expected": "ff00ffff00"
-        },
-        {
-            "a": "0000ff00ffff00ff",
-            "expected": "ff00ffff00ff0000"
-        }
+        "a": "ffff00",
+        "expected": "00ffff"
+    },
+    {
+        "a": "ffff",
+        "expected": "ffff"
+    },
+    {
+        "a": "0000",
+        "expected": "0000"
+    },
+    {
+        "a": "0000ff",
+        "expected": "ff0000"
+    },
+    {
+        "a": "000000",
+        "expected": "000000"
+    },
+    {
+        "a": "ffffff",
+        "expected": "ffffff"
+    },
+    {
+        "a": "00ffff00ff",
+        "expected": "ff00ffff00"
+    },
+    {
+        "a": "0000ff00ffff00ff",
+        "expected": "ff00ffff00ff0000"
+    }
     ];
 
     it('reverse', () => {
@@ -1113,6 +1217,32 @@ describe('Buffer', () => {
         assert.equal(b[0], 1);
         assert.equal(b[1], 2);
     });
+
+    it("FIX: fibjs will crash when the offset of Buffer.read is negative", () => {
+        const b = new Buffer("abcd");
+        assert.throws(() => {
+            b.readInt64BE(-737987540, true);
+        });
+    });
+
+    it("FIX: fibjs will crash when the offset of Buffer.write is negative", () => {
+        const b = new Buffer("abcd");
+        assert.throws(() => {
+            b.writeDoubleBE(0, -576311994);
+        });
+    });
+
+    it("FIX: passing a large offset to Buffer.readUIntLE will cause fibjs to crash", () => {
+        assert.throws(() => {
+            new Buffer("abc").readUIntLE(2147483647, true);
+        });
+    })
+
+    it("FIX: passing a large offset to Buffer.writeUInt32BE will cause fibjs to crash", () => {
+        assert.throws(() => {
+            new Buffer(0).writeUInt32BE(225, 2147483647, true);
+        });
+    })
 });
 
 require.main === module && test.run(console.DEBUG);

@@ -388,8 +388,7 @@ result_t AsyncIO::accept(obj_ptr<Socket_base>& retVal, AsyncEvent* ac)
 #endif
             setOption(c);
 
-            obj_ptr<Socket> sock = new Socket(c, ai.family(),
-                net_base::_SOCK_STREAM);
+            obj_ptr<Socket> sock = new Socket(c, ai.family());
 
             m_retVal = sock;
 
@@ -431,14 +430,15 @@ result_t AsyncIO::read(int32_t bytes, obj_ptr<Buffer_base>& retVal,
             if (m_buf.empty())
                 m_buf.resize(m_bytes);
 
+            char* _buf = m_buf.c_buffer();
             do {
                 int32_t n;
 
                 if (m_family)
-                    n = (int32_t)::recv(m_sockfd, &m_buf[m_pos], m_buf.length() - m_pos,
+                    n = (int32_t)::recv(m_sockfd, _buf + m_pos, m_buf.length() - m_pos,
                         MSG_NOSIGNAL);
                 else
-                    n = (int32_t)::read(m_sockfd, &m_buf[m_pos], m_buf.length() - m_pos);
+                    n = (int32_t)::read(m_sockfd, _buf + m_pos, m_buf.length() - m_pos);
                 if (n == SOCKET_ERROR) {
                     int32_t nError = errno;
                     if (nError == ECONNRESET)
@@ -474,7 +474,7 @@ result_t AsyncIO::read(int32_t bytes, obj_ptr<Buffer_base>& retVal,
             m_buf.resize(m_pos);
             m_retVal = new Buffer(m_buf);
             if (g_tcpdump)
-                outLog(console_base::_NOTICE, clean_string(m_buf));
+                outLog(console_base::C_NOTICE, clean_string(m_buf));
 
             return 0;
         }
@@ -529,7 +529,7 @@ result_t AsyncIO::write(Buffer_base* data, AsyncEvent* ac)
             m_sz = m_buf.length();
 
             if (g_tcpdump)
-                outLog(console_base::_WARN, clean_string(m_buf));
+                outLog(console_base::C_WARN, clean_string(m_buf));
         }
 
         virtual result_t process()
@@ -577,74 +577,6 @@ result_t AsyncIO::write(Buffer_base* data, AsyncEvent* ac)
         return CHECK_ERROR(CALL_E_NOSYNC);
 
     return (new asyncSend(m_fd, data, ac, m_family, m_lockSend, m_SendOpt))->request();
-}
-
-result_t AsyncIO::recvfrom(int32_t bytes, obj_ptr<NObject>& retVal,
-    AsyncEvent* ac)
-{
-    class asyncRecvFrom : public AsyncSockProc {
-    public:
-        asyncRecvFrom(intptr_t& sockfd, int32_t bytes, obj_ptr<NObject>& retVal, AsyncEvent* ac,
-            exlib::Locker& locker, void*& opt)
-            : AsyncSockProc(sockfd, EV_READ, ac, locker, opt)
-            , m_retVal(retVal)
-            , m_bytes(bytes > 0 ? bytes : SOCKET_BUFF_SIZE)
-        {
-        }
-
-        virtual result_t process()
-        {
-            if (m_buf.empty())
-                m_buf.resize(m_bytes);
-
-            int32_t n;
-            inetAddr addr_info;
-            socklen_t sz = sizeof(addr_info);
-
-            n = (int32_t)::recvfrom(m_sockfd, &m_buf[0], m_buf.length(), MSG_NOSIGNAL,
-                (sockaddr*)&addr_info, &sz);
-            if (n == SOCKET_ERROR) {
-                int32_t nError = errno;
-
-                m_buf.resize(0);
-                if (nError == EWOULDBLOCK)
-                    return CHECK_ERROR(CALL_E_PENDDING);
-
-                return CHECK_ERROR(-nError);
-            }
-
-            if (n == 0)
-                return CALL_RETURN_NULL;
-
-            m_buf.resize(n);
-            m_retVal = new DatagramPacket(m_buf, addr_info);
-
-            return 0;
-        }
-
-        virtual void after_unwatch()
-        {
-            result_t hr = process();
-
-            if (hr == CALL_E_PENDDING)
-                post();
-            else
-                ready(hr);
-        }
-
-    public:
-        obj_ptr<NObject>& m_retVal;
-        int32_t m_bytes;
-        exlib::string m_buf;
-    };
-
-    if (m_fd == INVALID_SOCKET)
-        return CHECK_ERROR(CALL_E_INVALID_CALL);
-
-    if (ac->isSync())
-        return CHECK_ERROR(CALL_E_NOSYNC);
-
-    return (new asyncRecvFrom(m_fd, bytes, retVal, ac, m_lockRecv, m_RecvOpt))->request();
 }
 
 void AsyncIO::run(void (*watchProc)(void*))

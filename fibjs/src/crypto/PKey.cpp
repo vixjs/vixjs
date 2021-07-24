@@ -558,9 +558,9 @@ result_t PKey::exportPem(exlib::string& retVal)
 
     buf.resize(mbedtls_pk_get_len(&m_key) * 8 + 128);
     if (priv)
-        ret = mbedtls_pk_write_key_pem(&m_key, (unsigned char*)&buf[0], buf.length());
+        ret = mbedtls_pk_write_key_pem(&m_key, (unsigned char*)buf.c_buffer(), buf.length());
     else
-        ret = mbedtls_pk_write_pubkey_pem(&m_key, (unsigned char*)&buf[0], buf.length());
+        ret = mbedtls_pk_write_pubkey_pem(&m_key, (unsigned char*)buf.c_buffer(), buf.length());
     if (ret != 0)
         return CHECK_ERROR(_ssl::setError(ret));
 
@@ -584,9 +584,9 @@ result_t PKey::exportDer(obj_ptr<Buffer_base>& retVal)
 
     buf.resize(8192);
     if (priv)
-        ret = mbedtls_pk_write_key_der(&m_key, (unsigned char*)&buf[0], buf.length());
+        ret = mbedtls_pk_write_key_der(&m_key, (unsigned char*)buf.c_buffer(), buf.length());
     else
-        ret = mbedtls_pk_write_pubkey_der(&m_key, (unsigned char*)&buf[0], buf.length());
+        ret = mbedtls_pk_write_pubkey_der(&m_key, (unsigned char*)buf.c_buffer(), buf.length());
     if (ret < 0)
         return CHECK_ERROR(_ssl::setError(ret));
 
@@ -604,9 +604,9 @@ inline void mpi_dump(Isolate* isolate, v8::Local<v8::Object> o, exlib::string ke
     mbedtls_mpi_write_binary(n, (unsigned char*)data.c_buffer(), sz);
 
     exlib::string b64;
-    base64Encode(data, true, b64);
+    base64Encode(data.c_str(), data.length(), true, b64);
 
-    o->Set(isolate->NewString(key), isolate->NewString(b64));
+    o->Set(isolate->context(), isolate->NewString(key), isolate->NewString(b64));
 }
 
 result_t PKey::exportJson(v8::Local<v8::Object>& retVal)
@@ -619,13 +619,14 @@ result_t PKey::exportJson(v8::Local<v8::Object>& retVal)
         return hr;
 
     Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
     mbedtls_pk_type_t type = mbedtls_pk_get_type(&m_key);
 
     if (type == MBEDTLS_PK_RSA) {
         mbedtls_rsa_context* rsa = mbedtls_pk_rsa(m_key);
         v8::Local<v8::Object> o = v8::Object::New(isolate->m_isolate);
 
-        o->Set(isolate->NewString("kty"), isolate->NewString("RSA"));
+        o->Set(context, isolate->NewString("kty"), isolate->NewString("RSA"));
         mpi_dump(isolate, o, "n", &rsa->N);
         mpi_dump(isolate, o, "e", &rsa->E);
 
@@ -647,10 +648,10 @@ result_t PKey::exportJson(v8::Local<v8::Object>& retVal)
         v8::Local<v8::Object> o = v8::Object::New(isolate->m_isolate);
         const char* _name = get_curve_name(ecp->grp.id);
 
-        o->Set(isolate->NewString("kty"), isolate->NewString(mbedtls_pk_get_name(&m_key)));
+        o->Set(context, isolate->NewString("kty"), isolate->NewString(mbedtls_pk_get_name(&m_key)));
 
         if (_name)
-            o->Set(isolate->NewString("crv"), isolate->NewString(_name));
+            o->Set(context, isolate->NewString("crv"), isolate->NewString(_name));
 
         mpi_dump(isolate, o, "x", &ecp->Q.X);
         mpi_dump(isolate, o, "y", &ecp->Q.Y);
@@ -680,7 +681,7 @@ result_t PKey::encrypt(Buffer_base* data, obj_ptr<Buffer_base>& retVal,
     output.resize(MBEDTLS_PREMASTER_SIZE);
 
     ret = mbedtls_pk_encrypt(&m_key, (const unsigned char*)str.c_str(), str.length(),
-        (unsigned char*)&output[0], &olen, output.length(),
+        (unsigned char*)output.c_buffer(), &olen, output.length(),
         mbedtls_ctr_drbg_random, &g_ssl.ctr_drbg);
     if (ret != 0)
         return CHECK_ERROR(_ssl::setError(ret));
@@ -716,7 +717,7 @@ result_t PKey::decrypt(Buffer_base* data, obj_ptr<Buffer_base>& retVal,
     output.resize(MBEDTLS_PREMASTER_SIZE * 2);
 
     ret = mbedtls_pk_decrypt(&m_key, (const unsigned char*)str.c_str(), str.length(),
-        (unsigned char*)&output[0], &olen, output.length(),
+        (unsigned char*)output.c_buffer(), &olen, output.length(),
         mbedtls_ctr_drbg_random, &g_ssl.ctr_drbg);
     if (ret != 0)
         return CHECK_ERROR(_ssl::setError(ret));
@@ -754,7 +755,7 @@ result_t PKey::sign(Buffer_base* data, int32_t alg, obj_ptr<Buffer_base>& retVal
     //alg=0~9  see https://tls.mbed.org/api/md_8h.html  enum mbedtls_md_type_t
     ret = mbedtls_pk_sign(&m_key, (mbedtls_md_type_t)alg,
         (const unsigned char*)str.c_str(), str.length(),
-        (unsigned char*)&output[0], &olen,
+        (unsigned char*)output.c_buffer(), &olen,
         mbedtls_ctr_drbg_random, &g_ssl.ctr_drbg);
     if (ret != 0)
         return CHECK_ERROR(_ssl::setError(ret));
@@ -781,9 +782,7 @@ result_t PKey::verify(Buffer_base* data, Buffer_base* sign,
     ret = mbedtls_pk_verify(&m_key, (mbedtls_md_type_t)alg,
         (const unsigned char*)str.c_str(), str.length(),
         (const unsigned char*)strsign.c_str(), strsign.length());
-    if (ret == MBEDTLS_ERR_ECP_VERIFY_FAILED || ret == MBEDTLS_ERR_RSA_VERIFY_FAILED ||
-        ret == MBEDTLS_ERR_SM2_BAD_SIGNATURE) 
-    {
+    if (ret == MBEDTLS_ERR_ECP_VERIFY_FAILED || ret == MBEDTLS_ERR_RSA_VERIFY_FAILED || ret == MBEDTLS_ERR_SM2_BAD_SIGNATURE) {
         retVal = false;
         return 0;
     }

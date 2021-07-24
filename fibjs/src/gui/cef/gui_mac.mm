@@ -13,10 +13,6 @@
 #include "CefWebView.h"
 #include "../os_gui.h"
 
-@interface GuiAppDelegate : NSObject <NSApplicationDelegate>
-- (void)createApplication:(id)object;
-@end
-
 @interface GuiApplication : NSApplication <CefAppProtocol> {
 @private
     BOOL handlingSendEvent_;
@@ -41,12 +37,6 @@
 }
 @end
 
-@implementation GuiAppDelegate
-- (void)createApplication:(id)object
-{
-}
-@end
-
 namespace fibjs {
 void CefWebView::config_window()
 {
@@ -65,12 +55,10 @@ result_t CefWebView::close(AsyncEvent* ac)
         return 0;
 
     NSView* view = CAST_CEF_WINDOW_HANDLE_TO_NSVIEW(m_browser->GetHost()->GetWindowHandle());
-    if(view)
-    {
+    if (view) {
         NSWindow* window = [view window];
 
-        if(!(window.styleMask & NSWindowStyleMaskTitled))
-        {
+        if (!(window.styleMask & NSWindowStyleMaskTitled)) {
             [window close];
             return 0;
         }
@@ -83,18 +71,11 @@ void MacRunMessageLoop(const CefMainArgs& args, const CefSettings& settings, Cef
 {
     @autoreleasepool {
         [GuiApplication sharedApplication];
+        [[GuiApplication sharedApplication] setActivationPolicy:NSApplicationActivationPolicyRegular];
+        [[GuiApplication sharedApplication] finishLaunching];
 
         CefInitialize(args, settings, application, nullptr);
-
-        NSObject* delegate = [GuiAppDelegate alloc];
-        [delegate performSelectorOnMainThread:@selector(createApplication:)
-                                   withObject:nil
-                                waitUntilDone:NO];
-
         CefRunMessageLoop();
-
-        [delegate release];
-        delegate = nil;
     }
 }
 

@@ -195,16 +195,40 @@ describe('crypto', () => {
 
     it("random", () => {
         assert.notEqual(crypto.randomBytes(8).hex(), crypto.randomBytes(8).hex());
+
+        assert.throws(() => {
+            crypto.randomBytes(-125);
+        });
+    });
+
+    it("simpleRandomBytes", () => {
+        assert.notEqual(crypto.simpleRandomBytes(8).hex(), crypto.simpleRandomBytes(8).hex());
+
+        assert.throws(() => {
+            crypto.simpleRandomBytes(-125);
+        });
     });
 
     it("pseudoRandomBytes", () => {
         assert.notEqual(crypto.pseudoRandomBytes(8).hex(), crypto.pseudoRandomBytes(8).hex());
+
+        assert.throws(() => {
+            crypto.pseudoRandomBytes(-125);
+        });
     });
 
     it("randomArt", () => {
         assert.notEqual(crypto.randomArt(data, "lion"), art1);
         assert.notEqual(crypto.randomArt(data, ""), art2);
         assert.notEqual(crypto.randomArt(data, "01234567890123456789"), art3);
+
+        assert.throws(() => {
+            crypto.randomArt(data, "title", 0);
+        });
+
+        assert.throws(() => {
+            crypto.randomArt(undefined, '', 1064203628);
+        });
     });
 
     describe('Cipher', () => {
@@ -292,14 +316,14 @@ describe('crypto', () => {
 
                 assert.deepEqual(json, {
                     "kty": "RSA",
-                    "n": "0m5lvKpWqy9JS7tV2HIPqHCYHLquSuxIC3F8strIQLJKO3rZmTT96KTnhsOfBO7Y1bI7mnT0PB3_vcHd9ekWMEoZJQw7MuB8KeM_Wn54-elJr5DNLk5bMppSGxX7ZnumiXGG51_X3Yp-_EbGtDG80GxXXix7Mucyo7K25uE0uW8=",
+                    "n": "0m5lvKpWqy9JS7tV2HIPqHCYHLquSuxIC3F8strIQLJKO3rZmTT96KTnhsOfBO7Y1bI7mnT0PB3_vcHd9ekWMEoZJQw7MuB8KeM_Wn54-elJr5DNLk5bMppSGxX7ZnumiXGG51_X3Yp-_EbGtDG80GxXXix7Mucyo7K25uE0uW8",
                     "e": "AQAB",
-                    "d": "agN2O9NxMHL1MTMi75WfL9Pxvl-KWXKqZSF6mjzAsF9iKI8euyHIXYFepzU8kual1RsjDhCnzvWqFvZplW8lXqrHf_P-rS_9Y4gBUw6pjnI_DnFIRwWHRvrUHHSCfWOdTCIKdOTkgLZuGFuhEY3RMIW0WSYejjLtftwy0RVxAzk=",
-                    "p": "6a4G1qmfwWmn1biigN7IVFlkbLf9oVe6g7rOmHxI-hn1GRxKDSVuAUrmR1IhuAnca9M0y7SD-7TUs6wjOxWxaw==",
-                    "q": "5ofkxFKdPBD0CQHMb9q13AMHUVe0rJ-hSjqqIBrmqApUOneyAcMV76M0QyIQnI2p3POa4Qu_7XChDwRVl7LlDQ==",
-                    "dp": "2mXGiGwCHl8j-FBWuID-1C6z-BRB3MBEVoeKPOOzxOPruatB3mWEGXsqG7A8SWgV9URxTI2K6P3J6Z7RUpBkvw==",
-                    "dq": "oagn5vfb5NQqnOpS9xkSsD67cfIj821ZSFlNFYhnuOzNVda7z_qCtnHm4zDPH0lEFXoKYMfBhfqWJpaugttjPQ==",
-                    "qi": "dqEQgxNmOVFrF4s776hTqeC6oEDila8EvpVb2F2ZvwAOLjCQ66OiAZK1BiYGHqUy0NeqNmtlsLSuBEZQZvqZwg=="
+                    "d": "agN2O9NxMHL1MTMi75WfL9Pxvl-KWXKqZSF6mjzAsF9iKI8euyHIXYFepzU8kual1RsjDhCnzvWqFvZplW8lXqrHf_P-rS_9Y4gBUw6pjnI_DnFIRwWHRvrUHHSCfWOdTCIKdOTkgLZuGFuhEY3RMIW0WSYejjLtftwy0RVxAzk",
+                    "p": "6a4G1qmfwWmn1biigN7IVFlkbLf9oVe6g7rOmHxI-hn1GRxKDSVuAUrmR1IhuAnca9M0y7SD-7TUs6wjOxWxaw",
+                    "q": "5ofkxFKdPBD0CQHMb9q13AMHUVe0rJ-hSjqqIBrmqApUOneyAcMV76M0QyIQnI2p3POa4Qu_7XChDwRVl7LlDQ",
+                    "dp": "2mXGiGwCHl8j-FBWuID-1C6z-BRB3MBEVoeKPOOzxOPruatB3mWEGXsqG7A8SWgV9URxTI2K6P3J6Z7RUpBkvw",
+                    "dq": "oagn5vfb5NQqnOpS9xkSsD67cfIj821ZSFlNFYhnuOzNVda7z_qCtnHm4zDPH0lEFXoKYMfBhfqWJpaugttjPQ",
+                    "qi": "dqEQgxNmOVFrF4s776hTqeC6oEDila8EvpVb2F2ZvwAOLjCQ66OiAZK1BiYGHqUy0NeqNmtlsLSuBEZQZvqZwg"
                 });
 
                 pk.importKey(json);
@@ -311,7 +335,7 @@ describe('crypto', () => {
 
                 assert.deepEqual(json, {
                     "kty": "RSA",
-                    "n": "0m5lvKpWqy9JS7tV2HIPqHCYHLquSuxIC3F8strIQLJKO3rZmTT96KTnhsOfBO7Y1bI7mnT0PB3_vcHd9ekWMEoZJQw7MuB8KeM_Wn54-elJr5DNLk5bMppSGxX7ZnumiXGG51_X3Yp-_EbGtDG80GxXXix7Mucyo7K25uE0uW8=",
+                    "n": "0m5lvKpWqy9JS7tV2HIPqHCYHLquSuxIC3F8strIQLJKO3rZmTT96KTnhsOfBO7Y1bI7mnT0PB3_vcHd9ekWMEoZJQw7MuB8KeM_Wn54-elJr5DNLk5bMppSGxX7ZnumiXGG51_X3Yp-_EbGtDG80GxXXix7Mucyo7K25uE0uW8",
                     "e": "AQAB"
                 });
 
@@ -560,9 +584,9 @@ describe('crypto', () => {
                 assert.deepEqual(json, {
                     "kty": "SM2",
                     "crv": "sm2p256r1",
-                    "x": "1KnIoMvdNODUrcEzQNnHbplwxNNyuHwIUnU0oNQ_0R0=",
-                    "y": "c_e2CHv5PB1-sKzzFGs30tT1XfwPUfIGnb5VEUN5bn4=",
-                    "d": "fcRRalaycsaXpKQYGcbmU8Qi93KqXnpodAwIK3vEOoI="
+                    "x": "1KnIoMvdNODUrcEzQNnHbplwxNNyuHwIUnU0oNQ_0R0",
+                    "y": "c_e2CHv5PB1-sKzzFGs30tT1XfwPUfIGnb5VEUN5bn4",
+                    "d": "fcRRalaycsaXpKQYGcbmU8Qi93KqXnpodAwIK3vEOoI"
                 });
 
                 pk.importKey(json);
@@ -575,8 +599,8 @@ describe('crypto', () => {
                 assert.deepEqual(json, {
                     "kty": "SM2",
                     "crv": "sm2p256r1",
-                    "x": "1KnIoMvdNODUrcEzQNnHbplwxNNyuHwIUnU0oNQ_0R0=",
-                    "y": "c_e2CHv5PB1-sKzzFGs30tT1XfwPUfIGnb5VEUN5bn4=",
+                    "x": "1KnIoMvdNODUrcEzQNnHbplwxNNyuHwIUnU0oNQ_0R0",
+                    "y": "c_e2CHv5PB1-sKzzFGs30tT1XfwPUfIGnb5VEUN5bn4",
                 });
 
                 pk.importKey(json);
@@ -1148,6 +1172,27 @@ describe('crypto', () => {
         });
     });
 
+    it("getHashes", () => {
+        var hashes = crypto.getHashes();
+        assert.isArray(hashes);
+
+        assert.greaterThan(hashes.length, 1);
+
+        assert.isTrue(hashes.includes('md5'))
+        assert.isTrue(hashes.includes('sha384'))
+    });
+
+    it("FIX: Illegal iterations and size parameters will cause crypto.pbkdf1 to crash", () => {
+        assert.throws(() => {
+            crypto.pbkdf1(null, null, 0, -1, 1);
+        })
+    });
+
+    it("FIX: Illegal iterations and size parameters will cause crypto.pbkdf2 to crash", () => {
+        assert.throws(() => {
+            crypto.pbkdf2(null, null, 0, -1, 1);
+        })
+    });
 });
 
 require.main === module && test.run(console.DEBUG);

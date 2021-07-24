@@ -5,6 +5,8 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/XmlElement.h"
 #include "XmlNodeImpl.h"
 #include "XmlNodeList.h"
@@ -12,26 +14,23 @@
 #include "StringBuffer.h"
 #include "parse.h"
 
-#ifndef XMLELEMENT_H_
-#define XMLELEMENT_H_
-
 namespace fibjs {
 
 class XmlElement : public XmlElement_base, public XmlNodeImpl {
 public:
     XmlElement(XmlDocument_base* document, exlib::string tagName, bool isXml)
-        : XmlNodeImpl(document, this, xml_base::_ELEMENT_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_ELEMENT_NODE)
         , m_isXml(isXml)
         , m_tagName(tagName)
         , m_localName(tagName)
         , m_attrs(new XmlNamedNodeMap())
     {
         if (!m_isXml)
-            qstrupr(&m_tagName[0]);
+            qstrupr(m_tagName.c_buffer());
     }
 
     XmlElement(XmlDocument_base* document, exlib::string namespaceURI, exlib::string qualifiedName, bool isXml)
-        : XmlNodeImpl(document, this, xml_base::_ELEMENT_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_ELEMENT_NODE)
         , m_isXml(isXml)
         , m_tagName(qualifiedName)
         , m_namespaceURI(namespaceURI)
@@ -47,11 +46,11 @@ public:
         }
 
         if (!m_isXml)
-            qstrupr(&m_tagName[0]);
+            qstrupr(m_tagName.c_buffer());
     }
 
     XmlElement(const XmlElement& from)
-        : XmlNodeImpl(from.m_document, this, xml_base::_ELEMENT_NODE)
+        : XmlNodeImpl(from.m_document, this, xml_base::C_ELEMENT_NODE)
         , m_isXml(from.m_isXml)
         , m_tagName(from.m_tagName)
         , m_localName(from.m_localName)
@@ -131,7 +130,7 @@ public:
             int32_t type;
 
             m_parent->get_nodeType(type);
-            if (type == xml_base::_ELEMENT_NODE)
+            if (type == xml_base::C_ELEMENT_NODE)
                 return ((XmlElement*)m_parent->m_node)->get_defaultNamespace(def_ns);
         }
 
@@ -155,7 +154,7 @@ public:
         int32_t i;
 
         for (i = 0; i < sz; i++)
-            if (childs[i]->m_type == xml_base::_ELEMENT_NODE) {
+            if (childs[i]->m_type == xml_base::C_ELEMENT_NODE) {
                 XmlElement* pEl = (XmlElement*)(childs[i]->m_node);
                 pEl->getElementsByTagNameFromThis(tagName, retVal);
             }
@@ -173,7 +172,7 @@ public:
         int32_t i;
 
         for (i = 0; i < sz; i++)
-            if (childs[i]->m_type == xml_base::_ELEMENT_NODE) {
+            if (childs[i]->m_type == xml_base::C_ELEMENT_NODE) {
                 XmlElement* pEl = (XmlElement*)(childs[i]->m_node);
                 if (pEl->getFirstElementsByTagName(tagName, retVal) == 0)
                     return 0;
@@ -189,10 +188,10 @@ public:
         int32_t i;
 
         for (i = 0; i < sz; i++)
-            if (childs[i]->m_type == xml_base::_ELEMENT_NODE) {
+            if (childs[i]->m_type == xml_base::C_ELEMENT_NODE) {
                 XmlElement* pEl = (XmlElement*)(childs[i]->m_node);
                 pEl->getTextContent(retVal);
-            } else if (childs[i]->m_type == xml_base::_TEXT_NODE) {
+            } else if (childs[i]->m_type == xml_base::C_TEXT_NODE) {
                 exlib::string value;
                 childs[i]->m_node->get_nodeValue(value);
                 retVal.append(value);
@@ -217,7 +216,7 @@ public:
         int32_t i;
 
         for (i = 0; i < sz; i++)
-            if (childs[i]->m_type == xml_base::_ELEMENT_NODE) {
+            if (childs[i]->m_type == xml_base::C_ELEMENT_NODE) {
                 XmlElement* pEl = (XmlElement*)(childs[i]->m_node);
                 pEl->getElementsByTagNameNSFromThis(namespaceURI, localName, retVal);
             }
@@ -279,7 +278,7 @@ public:
         int32_t i;
 
         for (i = 0; i < sz; i++)
-            if (childs[i]->m_type == xml_base::_ELEMENT_NODE) {
+            if (childs[i]->m_type == xml_base::C_ELEMENT_NODE) {
                 XmlElement* pEl = (XmlElement*)(childs[i]->m_node);
                 pEl->getElementsByClassNameFromThis(classNames, retVal);
             }
@@ -297,4 +296,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* XMLELEMENT_H_ */

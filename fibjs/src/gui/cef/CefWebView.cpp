@@ -13,6 +13,7 @@
 #include "include/cef_parser.h"
 #include "include/views/cef_window.h"
 #include "include/views/cef_browser_view.h"
+#include "include/cef_request_context_handler.h"
 #include "../os_gui.h"
 
 namespace fibjs {
@@ -81,9 +82,12 @@ private:
 };
 
 extern GuiApp* g_app;
-CefWebView::CefWebView(exlib::string url, NObject* opt)
+CefWebView::CefWebView(exlib::string url, NObject* opt, CefRefPtr<CefValue> proxy)
     : m_opt(opt)
     , m_url(url)
+    , m_download_path(g_app->m_download_path)
+    , m_download_dialog(g_app->m_download_dialog)
+    , m_proxy(proxy)
     , m_bDebug(g_app->m_bDebug)
     , m_bPopup(g_app->m_bPopup)
     , m_bMenu(g_app->m_bMenu)
@@ -92,7 +96,7 @@ CefWebView::CefWebView(exlib::string url, NObject* opt)
     , m_height(600)
     , m_eid(0)
 {
-    holder()->Ref();
+    isolate_ref();
 
     m_opt = opt;
     m_url = url;
@@ -111,6 +115,12 @@ CefWebView::CefWebView(exlib::string url, NObject* opt)
 
         if (!m_bHeadless && m_opt->get("headless", v) == 0)
             m_bHeadless = v.boolVal();
+
+        if (m_opt->get("download_path", v) == 0)
+            m_download_path = v.string();
+
+        if (m_opt->get("download_dialog", v) == 0)
+            m_download_dialog = v.boolVal();
 
         if (m_bHeadless) {
             if (opt->get("width", v) == 0)
@@ -146,13 +156,21 @@ void CefWebView::open()
     CefBrowserSettings browser_settings;
     browser_settings.background_color = CefColorSetARGB(255, 255, 255, 255);
 
+    CefRefPtr<CefRequestContext> context = CefRequestContext::GetGlobalContext();
+
+    if (m_proxy) {
+        CefString error;
+        context = CefRequestContext::CreateContext(context, nullptr);
+        context->SetPreference("proxy", m_proxy, error);
+    }
+
     if (use_view) {
         static CefRefPtr<GuiBrowserViewDelegate> view_delegate;
         if (view_delegate == NULL)
             view_delegate = new GuiBrowserViewDelegate();
 
         CefRefPtr<CefBrowserView> browser_view = CefBrowserView::CreateBrowserView(gui_handler, m_url.c_str(), browser_settings,
-            nullptr, nullptr, view_delegate);
+            nullptr, context, view_delegate);
         CefWindow::CreateTopLevelWindow(new GuiWindowDelegate(browser_view, this));
     } else {
         CefWindowInfo window_info;
@@ -160,8 +178,8 @@ void CefWebView::open()
         if (m_bHeadless)
             window_info.windowless_rendering_enabled = true;
 
-        m_browser = CefBrowserHost::CreateBrowserSync(window_info, gui_handler, m_url.c_str(), browser_settings,
-            nullptr, nullptr);
+        m_browser = CefBrowserHost::CreateBrowserSync(window_info, gui_handler, m_url.c_str(),
+            browser_settings, nullptr, context);
 
         if (!m_bHeadless)
             config_window();
@@ -283,7 +301,7 @@ result_t CefWebView::printToPDF(exlib::string file, AsyncEvent* ac)
     public:
         virtual void OnPdfPrintFinished(const CefString& path, bool ok)
         {
-            m_ac->apost(ok ? 0 : CALL_E_INTERNAL);
+            m_ac->post(ok ? 0 : CALL_E_INTERNAL);
         }
 
     private:
@@ -319,17 +337,44 @@ result_t CefWebView::executeJavaScript(exlib::string code, AsyncEvent* ac)
     return 0;
 }
 
+void set_result(exlib::string res, Variant& retVal, AsyncEvent* ac)
+{
+    if (!qstrcmp(res.c_str(), "{\"code\":-", 9)) {
+        CefRefPtr<CefValue> v;
+        CefRefPtr<CefDictionaryValue> d;
+
+        v = CefParseJSON(res.c_str(), res.length(),
+            JSON_PARSER_ALLOW_TRAILING_COMMAS);
+        if (v)
+            d = v->GetDictionary();
+
+        if (!d)
+            ac->post(CHECK_ERROR(Runtime::setError("WebView: invalid result format.")));
+        else {
+            CefString msg = d->GetString("message");
+            CefString data = d->GetString("data");
+            ac->post(CHECK_ERROR(Runtime::setError("WebView: " + msg.ToString() + " - " + data.ToString())));
+        }
+    } else {
+        retVal.setJSON(res);
+        ac->post(0);
+    }
+}
+
 void CefWebView::OnDevToolsMethodResult(CefRefPtr<CefBrowser> browser, int message_id,
     bool success, const void* result, size_t result_size)
 {
-    std::map<int32_t, ac_method>::iterator it_method;
+    exlib::string res((const char*)result, result_size);
 
+    m_method_lock.lock();
+    std::map<int32_t, ac_method>::iterator it_method;
     it_method = m_method.find(message_id);
     if (it_method != m_method.end()) {
-        it_method->second.m_retVal.setJSON(exlib::string((const char*)result, result_size));
-        it_method->second.m_ac->apost(0);
+        set_result(res, it_method->second.m_retVal, it_method->second.m_ac);
         m_method.erase(it_method);
-    }
+    } else
+        m_result.insert(std::pair<int32_t, exlib::string>(message_id, res));
+    m_method_lock.unlock();
 }
 
 void CefWebView::OnDevToolsEvent(CefRefPtr<CefBrowser> browser, const CefString& method,
@@ -379,7 +424,16 @@ result_t CefWebView::executeDevToolsMethod(exlib::string method, v8::Local<v8::O
     if (rid == 0)
         return CALL_E_INTERNAL;
 
-    m_method.insert(std::pair<int32_t, ac_method>(rid, ac_method(retVal, ac)));
+    m_method_lock.lock();
+    std::map<int32_t, exlib::string>::iterator it_method;
+    it_method = m_result.find(rid);
+    if (it_method != m_result.end()) {
+        set_result(it_method->second, retVal, ac);
+        m_result.erase(it_method);
+    } else
+        m_method.insert(std::pair<int32_t, ac_method>(rid, ac_method(retVal, ac)));
+    m_method_lock.unlock();
+
     return CALL_E_PENDDING;
 }
 
@@ -398,6 +452,12 @@ result_t CefWebView::close(AsyncEvent* ac)
 
 result_t CefWebView::postMessage(exlib::string msg, AsyncEvent* ac)
 {
+    return 0;
+}
+
+result_t CefWebView::get_type(exlib::string& retVal)
+{
+    retVal = "cef";
     return 0;
 }
 }

@@ -13,6 +13,7 @@
 #include "inetAddr.h"
 #include "Smtp.h"
 #include "Url.h"
+#include "options.h"
 
 #ifndef INET6_ADDRSTRLEN
 #define INET6_ADDRSTRLEN 46
@@ -76,6 +77,18 @@ result_t dns_base::lookup(exlib::string name, exlib::string& retVal, AsyncEvent*
 
 DECLARE_MODULE(net);
 
+result_t net_base::get_use_uv_socket(bool& retVal)
+{
+    retVal = g_uv_socket;
+    return 0;
+}
+
+result_t net_base::set_use_uv_socket(bool newVal)
+{
+    g_uv_socket = newVal;
+    return 0;
+}
+
 result_t net_base::info(v8::Local<v8::Object>& retVal)
 {
     return os_base::networkInterfaces(retVal);
@@ -84,7 +97,7 @@ result_t net_base::info(v8::Local<v8::Object>& retVal)
 result_t net_base::resolve(exlib::string name, int32_t family,
     exlib::string& retVal, AsyncEvent* ac)
 {
-    if (family != net_base::_AF_INET && family != net_base::_AF_INET6)
+    if (family != net_base::C_AF_INET && family != net_base::C_AF_INET6)
         return CHECK_ERROR(CALL_E_INVALIDARG);
 
     if (ac->isSync())
@@ -126,13 +139,13 @@ result_t net_base::resolve(exlib::string name, int32_t family,
 result_t net_base::ip(exlib::string name, exlib::string& retVal,
     AsyncEvent* ac)
 {
-    return resolve(name, net_base::_AF_INET, retVal, ac);
+    return resolve(name, net_base::C_AF_INET, retVal, ac);
 }
 
 result_t net_base::ipv6(exlib::string name, exlib::string& retVal,
     AsyncEvent* ac)
 {
-    return resolve(name, net_base::_AF_INET6, retVal, ac);
+    return resolve(name, net_base::C_AF_INET6, retVal, ac);
 }
 
 result_t net_base::connect(exlib::string url, int32_t timeout, obj_ptr<Stream_base>& retVal,
@@ -141,34 +154,47 @@ result_t net_base::connect(exlib::string url, int32_t timeout, obj_ptr<Stream_ba
     if (!qstrcmp(url.c_str(), "ssl:", 4))
         return ssl_base::connect(url, timeout, retVal, ac);
 
-    if (qstrcmp(url.c_str(), "tcp:", 4))
+    if (qstrcmp(url.c_str(), "tcp:", 4) && qstrcmp(url.c_str(), "unix:", 5) && qstrcmp(url.c_str(), "pipe:", 5))
         return CHECK_ERROR(CALL_E_INVALIDARG);
 
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
 
-    obj_ptr<Url> u = new Url();
+    if (!qstrcmp(url.c_str(), "tcp:", 4)) {
+        obj_ptr<Url> u = new Url();
 
-    result_t hr = u->parse(url);
-    if (hr < 0)
-        return hr;
+        result_t hr = u->parse(url);
+        if (hr < 0)
+            return hr;
 
-    if (u->m_port.length() == 0)
-        return CHECK_ERROR(CALL_E_INVALIDARG);
+        if (u->m_port.length() == 0)
+            return CHECK_ERROR(CALL_E_INVALIDARG);
 
-    int32_t nPort = atoi(u->m_port.c_str());
-    int32_t family = u->m_ipv6 ? net_base::_AF_INET6 : net_base::_AF_INET;
+        int32_t nPort = atoi(u->m_port.c_str());
+        int32_t family = u->m_ipv6 ? net_base::C_AF_INET6 : net_base::C_AF_INET;
 
-    obj_ptr<Socket_base> socket;
+        obj_ptr<Socket_base> socket;
 
-    hr = Socket_base::_new(family, net_base::_SOCK_STREAM, socket);
-    if (hr < 0)
-        return hr;
+        hr = Socket_base::_new(family, socket);
+        if (hr < 0)
+            return hr;
 
-    socket->set_timeout(timeout);
+        socket->set_timeout(timeout);
 
-    retVal = socket;
-    return socket->connect(u->m_hostname, nPort, ac);
+        retVal = socket;
+        return socket->connect(u->m_hostname, nPort, ac);
+    } else {
+        obj_ptr<Socket_base> socket;
+
+        result_t hr = Socket_base::_new(net_base::C_AF_UNIX, socket);
+        if (hr < 0)
+            return hr;
+
+        socket->set_timeout(timeout);
+
+        retVal = socket;
+        return socket->connect(url.substr(5), 0, ac);
+    }
 }
 
 result_t net_base::openSmtp(exlib::string url, int32_t timeout,
@@ -210,39 +236,19 @@ result_t net_base::isIP(exlib::string ip, int32_t& retVal)
 
 result_t net_base::isIPv4(exlib::string ip, bool& retVal)
 {
-    result_t hr;
-
     retVal = true;
-    const char* src = ip.c_str();
-    unsigned char dst[sizeof(struct in6_addr)];
-    hr = inet_pton4(src, dst);
-    if (hr != 0)
+    sockaddr_in dst;
+    if (uv_ip4_addr(ip.c_str(), 0, &dst))
         retVal = false;
+
     return 0;
 }
 
 result_t net_base::isIPv6(exlib::string ip, bool& retVal)
 {
-    result_t hr;
     retVal = true;
-    const char* src = ip.c_str();
-    int len;
-    char tmp[INET6_ADDRSTRLEN], *s, *p;
-    unsigned char dst[sizeof(struct in6_addr)];
-    s = (char*)src;
-    p = strchr(s, '%');
-    if (p != NULL) {
-        s = tmp;
-        len = (int32_t)(p - src);
-        if (len > INET6_ADDRSTRLEN - 1) {
-            retVal = false;
-            return 0;
-        }
-        memcpy(s, src, len);
-        s[len] = '\0';
-    }
-    hr = inet_pton6(s, dst);
-    if (hr != 0)
+    sockaddr_in6 dst;
+    if (uv_ip6_addr(ip.c_str(), 0, &dst))
         retVal = false;
 
     return 0;

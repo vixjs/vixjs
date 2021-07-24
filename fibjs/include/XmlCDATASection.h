@@ -5,31 +5,30 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/XmlCDATASection.h"
 #include "XmlNodeImpl.h"
 #include "XmlDataImpl.h"
-
-#ifndef XMLCDATASECTION_H_
-#define XMLCDATASECTION_H_
 
 namespace fibjs {
 
 class XmlCDATASection : public XmlCDATASection_base, public XmlNodeImpl {
 public:
     XmlCDATASection(XmlDocument_base* document, const char* data = "")
-        : XmlNodeImpl(document, this, xml_base::_CDATA_SECTION_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_CDATA_SECTION_NODE)
         , m_data(data)
     {
     }
 
     XmlCDATASection(XmlDocument_base* document, exlib::string& data)
-        : XmlNodeImpl(document, this, xml_base::_CDATA_SECTION_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_CDATA_SECTION_NODE)
         , m_data(data)
     {
     }
 
     XmlCDATASection(const XmlCDATASection& from)
-        : XmlNodeImpl(from.m_document, this, xml_base::_CDATA_SECTION_NODE)
+        : XmlNodeImpl(from.m_document, this, xml_base::C_CDATA_SECTION_NODE)
         , m_data(from.m_data)
     {
     }
@@ -82,4 +81,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* XMLCDATASECTION_H_ */

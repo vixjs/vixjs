@@ -5,12 +5,11 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/X509Req.h"
 #include <mbedtls/mbedtls/x509_csr.h>
 #include "X509Cert.h"
-
-#ifndef _fj_X509REQ_H
-#define _fj_X509REQ_H
 
 namespace fibjs {
 
@@ -33,6 +32,8 @@ public:
     virtual result_t sign(exlib::string issuer, PKey_base* key, v8::Local<v8::Object> opts, obj_ptr<X509Cert_base>& retVal, AsyncEvent* ac);
     virtual result_t get_subject(exlib::string& retVal);
     virtual result_t get_publicKey(obj_ptr<PKey_base>& retVal);
+    virtual result_t get_sig_md(int32_t& retVal);
+    virtual result_t get_sig_pk(int32_t& retVal);
 
 public:
     result_t create(exlib::string subject, PKey_base* key, int32_t hash);
@@ -48,5 +49,3 @@ private:
     mbedtls_x509_csr m_csr;
 };
 }
-
-#endif

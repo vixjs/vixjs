@@ -144,6 +144,9 @@ result_t LevelDB::_mget(std::vector<exlib::string>* keys,
 
 result_t LevelDB::mget(v8::Local<v8::Array> keys, obj_ptr<NArray>& retVal)
 {
+    if (!db())
+        return CHECK_ERROR(CALL_E_INVALID_CALL);
+
     std::vector<exlib::string> ks;
     int32_t len = keys->Length();
     int32_t i;
@@ -155,9 +158,10 @@ result_t LevelDB::mget(v8::Local<v8::Array> keys, obj_ptr<NArray>& retVal)
     ks.resize(len);
 
     Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
 
     for (i = 0; i < len; i++) {
-        JSValue v = keys->Get(i);
+        JSValue v = keys->Get(context, i);
         obj_ptr<Buffer_base> buf;
 
         hr = GetArgumentValue(isolate->m_isolate, v, buf);
@@ -215,20 +219,19 @@ result_t LevelDB::mset(v8::Local<v8::Object> map)
     leveldb::WriteBatch batch;
     leveldb::WriteBatch* batch_ = m_batch ? m_batch : &batch;
 
-    JSArray ks = map->GetPropertyNames();
+    Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
+    JSArray ks = map->GetPropertyNames(context);
     int32_t len = ks->Length();
     int32_t i;
     result_t hr;
 
-    Isolate* isolate = holder();
-
     for (i = 0; i < len; i++) {
-        JSValue k = ks->Get(i);
-        v8::String::Utf8Value uk(isolate->m_isolate, k);
-        exlib::string key(*uk, uk.length());
+        JSValue k = ks->Get(context, i);
+        exlib::string key(isolate->toString(k));
 
         exlib::string value1;
-        hr = getValue(map->Get(k), value1);
+        hr = getValue(JSValue(map->Get(context, k)), value1);
         if (hr < 0)
             return hr;
 
@@ -247,6 +250,8 @@ result_t LevelDB::mremove(v8::Local<v8::Array> keys)
     if (!db())
         return CHECK_ERROR(CALL_E_INVALID_CALL);
 
+    Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
     leveldb::WriteBatch batch;
     leveldb::WriteBatch* batch_ = m_batch ? m_batch : &batch;
 
@@ -256,7 +261,7 @@ result_t LevelDB::mremove(v8::Local<v8::Array> keys)
 
     for (i = 0; i < len; i++) {
         exlib::string key;
-        hr = getValue(JSValue(keys->Get(i)), key);
+        hr = getValue(JSValue(keys->Get(context, i)), key);
         if (hr < 0)
             return hr;
 
@@ -357,7 +362,8 @@ result_t LevelDB::Iter::iter(Isolate* isolate, v8::Local<v8::Function> func)
             m_kvs[i * 2].Release();
             m_kvs[i * 2 + 1].Release();
 
-            v8::Local<v8::Value> v = func->Call(v8::Undefined(isolate->m_isolate), 2, args);
+            v8::Local<v8::Value> v;
+            func->Call(func->CreationContext(), v8::Undefined(isolate->m_isolate), 2, args).ToLocal(&v);
             if (v.IsEmpty())
                 return CALL_E_JAVASCRIPT;
 
@@ -395,6 +401,9 @@ result_t LevelDB::between(Buffer_base* from, Buffer_base* to, v8::Local<v8::Func
 
 result_t LevelDB::begin(obj_ptr<LevelDB_base>& retVal)
 {
+    if (!m_db)
+        return CHECK_ERROR(CALL_E_INVALID_CALL);
+
     obj_ptr<LevelDB> db = new LevelDB();
 
     db->m_base = this;

@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _test_base_H_
-#define _test_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -262,7 +261,7 @@ inline void test_base::s_static_run(const v8::FunctionCallbackInfo<v8::Value>& a
 
     METHOD_OVER(1, 0);
 
-    OPT_ARG(int32_t, 0, console_base::_ERROR);
+    OPT_ARG(int32_t, 0, console_base::C_ERROR);
 
     hr = run(v0, vr);
 
@@ -304,5 +303,3 @@ inline void test_base::s_static_set_slow(v8::Local<v8::Name> property, v8::Local
     PROPERTY_SET_LEAVE();
 }
 }
-
-#endif

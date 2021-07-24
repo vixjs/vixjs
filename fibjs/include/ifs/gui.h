@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _gui_base_H_
-#define _gui_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -23,19 +22,20 @@ class gui_base : public object_base {
 
 public:
     enum {
-        _IE7 = 7000,
-        _IE8 = 8000,
-        _IE9 = 9000,
-        _IE10 = 10000,
-        _IE11 = 11000,
-        _EDGE = 11001
+        C_IE7 = 7000,
+        C_IE8 = 8000,
+        C_IE9 = 9000,
+        C_IE10 = 10000,
+        C_IE11 = 11000,
+        C_EDGE = 11001
     };
 
 public:
     // gui_base
     static result_t setVersion(int32_t ver);
-    static result_t open(exlib::string url, v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal);
     static result_t config(v8::Local<v8::Object> opt);
+    static result_t open(exlib::string url, v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal);
+    static result_t open(v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -50,8 +50,8 @@ public:
 
 public:
     static void s_static_setVersion(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void s_static_open(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_config(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_open(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
 
@@ -62,17 +62,17 @@ inline ClassInfo& gui_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
         { "setVersion", s_static_setVersion, true },
-        { "open", s_static_open, true },
-        { "config", s_static_config, true }
+        { "config", s_static_config, true },
+        { "open", s_static_open, true }
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "IE7", _IE7 },
-        { "IE8", _IE8 },
-        { "IE9", _IE9 },
-        { "IE10", _IE10 },
-        { "IE11", _IE11 },
-        { "EDGE", _EDGE }
+        { "IE7", C_IE7 },
+        { "IE8", C_IE8 },
+        { "IE9", C_IE9 },
+        { "IE10", C_IE10 },
+        { "IE11", C_IE11 },
+        { "EDGE", C_EDGE }
     };
 
     static ClassData s_cd = {
@@ -99,6 +99,20 @@ inline void gui_base::s_static_setVersion(const v8::FunctionCallbackInfo<v8::Val
     METHOD_VOID();
 }
 
+inline void gui_base::s_static_config(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    METHOD_NAME("gui.config");
+    METHOD_ENTER();
+
+    METHOD_OVER(1, 0);
+
+    OPT_ARG(v8::Local<v8::Object>, 0, v8::Object::New(isolate));
+
+    hr = config(v0);
+
+    METHOD_VOID();
+}
+
 inline void gui_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     obj_ptr<WebView_base> vr;
@@ -113,22 +127,12 @@ inline void gui_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& a
 
     hr = open(v0, v1, vr);
 
-    METHOD_RETURN();
-}
-
-inline void gui_base::s_static_config(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    METHOD_NAME("gui.config");
-    METHOD_ENTER();
-
     METHOD_OVER(1, 0);
 
     OPT_ARG(v8::Local<v8::Object>, 0, v8::Object::New(isolate));
 
-    hr = config(v0);
+    hr = open(v0, vr);
 
-    METHOD_VOID();
+    METHOD_RETURN();
 }
 }
-
-#endif

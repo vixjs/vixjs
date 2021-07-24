@@ -3,12 +3,10 @@ test.setup();
 
 var encoding = require('encoding');
 var json = require('json');
-var bson = require('bson');
 var msgpack = require('msgpack');
 var base64 = require('base64');
 var hex = require('hex');
 var iconv = require('iconv');
-var base64vlq = require('base64vlq');
 var util = require('util');
 
 describe('encoding', () => {
@@ -93,23 +91,8 @@ describe('encoding', () => {
     });
 
     it("base64url", () => {
-        assert.equal(base64.encode(base64.decode('//4+AA=='), true), '__4-AA==');
-        assert.deepEqual(base64.decode('//4+AA=='), base64.decode('__4-AA=='));
-    });
-
-    it('base64vlq', () => {
-        var tests = {
-            'AAAA': [0, 0, 0, 0],
-            'AAgBC': [0, 0, 16, 1],
-            '6rk2B': [886973],
-            '6rB': [701],
-            'mC3jxHAkhSliBqwG': [35, -123451, 0, 9234, -546, 3333]
-        };
-
-        for (var k in tests) {
-            assert.equal(k, base64vlq.encode(tests[k]));
-            assert.deepEqual(tests[k], base64vlq.decode(k));
-        }
+        assert.equal(base64.encode(base64.decode('//4+AA=='), true), '__4-AA');
+        assert.deepEqual(base64.decode('//4+AA=='), base64.decode('__4-AA'));
     });
 
     it('hex', () => {
@@ -131,12 +114,20 @@ describe('encoding', () => {
     });
 
     it('iconv ucs2', () => {
-        for (var i = 0; i < 65536; i++) {
+        for (var i = 0; i < 0xd800; i++) {
             var s = String.fromCharCode(i);
             var buf = iconv.encode('utf16le', s);
             var n = buf.readUInt16LE();
             assert.equal(i, n);
             assert.equal(iconv.decode('utf16le', buf), s);
+        }
+
+        for (var i = 0; i < 0xd800; i++) {
+            var s = String.fromCharCode(i);
+            var buf = iconv.encode('utf16be', s);
+            var n = buf.readUInt16BE();
+            assert.equal(i, n);
+            assert.equal(iconv.decode('utf16be', buf), s);
         }
 
         assert.equal(new Buffer([0xc8]).toString(), '\ufffd');
@@ -182,17 +173,17 @@ describe('encoding', () => {
         [
             0x110000,
             "00001100",
-            "00dc000000dc0000"
+            "00001100"
         ],
         [
             0x1fffff,
             "ffff1f00",
-            "bfdf0000ffdf0000"
+            "ffff1f00"
         ],
         [
             0x200000,
             "00002000",
-            "c0df000000dc0000"
+            "00002000"
         ],
         [
             0x3ffffff,
@@ -366,12 +357,22 @@ describe('encoding', () => {
 
         it('test for true', () => {
             assert.deepEqual(true, msgpack.decode(msgpack.encode(true)));
+            assert.deepEqual(true, msgpack.decode(msgpack.encode(new Boolean(true))));
             assert.isBoolean(msgpack.decode(msgpack.encode(true)));
         });
 
         it('test for false', () => {
             assert.deepEqual(false, msgpack.decode(msgpack.encode(false)));
+            assert.deepEqual(false, msgpack.decode(msgpack.encode(new Boolean(false))));
             assert.isBoolean(msgpack.decode(msgpack.encode(false)));
+        });
+
+        it('test for 2^15 negative', () => {
+            assert.deepEqual(
+                0 - Math.pow(2, 15) - 1,
+                msgpack.decode(msgpack.encode(0 - Math.pow(2, 15) - 1))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(0 - Math.pow(2, 15) - 1)));
         });
 
         it('test for 2^31 negative', () => {
@@ -390,6 +391,14 @@ describe('encoding', () => {
             assert.isNumber(msgpack.decode(msgpack.encode(0 - Math.pow(2, 40) - 1)));
         });
 
+        it('test for 2^15', () => {
+            assert.deepEqual(
+                Math.pow(2, 15) + 1,
+                msgpack.decode(msgpack.encode(Math.pow(2, 15) + 1))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(Math.pow(2, 15) + 1)));
+        });
+
         it('test for 2^31', () => {
             assert.deepEqual(
                 Math.pow(2, 31) + 1,
@@ -406,12 +415,85 @@ describe('encoding', () => {
             assert.isNumber(msgpack.decode(msgpack.encode(Math.pow(2, 40) + 1)));
         });
 
+        it('test safe int of number', () => {
+            assert.deepEqual(
+                -32768,
+                msgpack.decode(msgpack.encode(-32768))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(-32768)));
+
+            assert.deepEqual(
+                32767,
+                msgpack.decode(msgpack.encode(32767))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(32767)));
+
+            assert.deepEqual(
+                -2147483648,
+                msgpack.decode(msgpack.encode(-2147483648))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(-2147483648)));
+
+            assert.deepEqual(
+                2147483647,
+                msgpack.decode(msgpack.encode(2147483647))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(2147483647)));
+
+            assert.deepEqual(
+                9007199254740992,
+                msgpack.decode(msgpack.encode(9007199254740992))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(9007199254740992)));
+
+            assert.deepEqual(
+                -9007199254740992,
+                msgpack.decode(msgpack.encode(-9007199254740992))
+            );
+            assert.isNumber(msgpack.decode(msgpack.encode(-9007199254740992)));
+        });
+
+        it('test out safe int of number', () => {
+            var tmp_out_a = 2 ** 54;
+            var tmp_out_b = -(2 ** 54);
+
+            assert.isTrue(typeof (msgpack.decode(msgpack.encode(tmp_out_a))) == "bigint");
+            assert.isTrue(BigInt(tmp_out_a) === msgpack.decode(msgpack.encode(tmp_out_a)));
+
+            assert.isTrue(typeof (msgpack.decode(msgpack.encode(tmp_out_b))) == "bigint");
+            assert.isTrue(BigInt(tmp_out_b) === msgpack.decode(msgpack.encode(tmp_out_b)));
+        });
+
+        it('test encoding safe int number size', () => {
+            assert.isTrue(msgpack.encode(1).length == 1);
+            assert.isTrue(msgpack.encode(128).length == 2);
+            assert.isTrue(msgpack.encode(0xfff).length == 3);
+            assert.isTrue(msgpack.encode(0xfffff).length == 5);
+        });
+
         it('test number approaching 2^64', () => {
             assert.deepEqual(
                 123456782345245,
                 msgpack.decode(msgpack.encode(123456782345245))
             );
             assert.isNumber(msgpack.decode(msgpack.encode(123456782345245)));
+        });
+
+        it('test number NaN', () => {
+            assert.isTrue(Number.isNaN(msgpack.decode(msgpack.encode(NaN))));
+        });
+
+        it('test number repeating infinite decimal', () => {
+            assert.isTrue(msgpack.decode(msgpack.encode(1 / 3)) == 1 / 3);
+        });
+
+        it('test number non-repeating infinite decimal', () => {
+            assert.isTrue(msgpack.decode(msgpack.encode(Math.PI)) == Math.PI);
+        });
+
+        it('test number ±Infinity', () => {
+            assert.isTrue(msgpack.decode(msgpack.encode(Infinity)) == Infinity);
+            assert.isTrue(msgpack.decode(msgpack.encode(-Infinity)) == -Infinity);
         });
 
         it('test bigint approaching 2^64', () => {
@@ -494,8 +576,8 @@ describe('encoding', () => {
                 d: date
             };
             assert.deepEqual({
-                    d: date
-                },
+                d: date
+            },
                 msgpack.decode(msgpack.encode(dateObj))
             );
             assert.isObject(msgpack.decode(msgpack.encode(dateObj)));
@@ -504,9 +586,9 @@ describe('encoding', () => {
         it('test for not catching multiple non-circular references', () => {
             var e = {};
             assert.deepEqual({
-                    a: e,
-                    b: e
-                },
+                a: e,
+                b: e
+            },
                 msgpack.decode(msgpack.encode({
                     a: e,
                     b: e
@@ -595,45 +677,24 @@ describe('encoding', () => {
             };
             assert.deepEqual(expect, msgpack.decode(msgpack.encode(subject)));
         });
-        
-        it('test primitive bool / new Boolean()', ()=> {
-        	var obj1 = {'b1': true,             };
-        	var obj2 = {'b1': new Boolean(true) };
-        	assert.deepEqual(msgpack.decode(msgpack.encode(obj1)), msgpack.decode(msgpack.encode(obj2)));
-        });
-        
-        it('test primitive number / new Number()', ()=> {
-        	var obj1 = {'n1': 1234,             };
-        	var obj2 = {'n1': new Number(1234)  };
-        	assert.deepEqual(msgpack.decode(msgpack.encode(obj1)), msgpack.decode(msgpack.encode(obj2)));
+
+        it('test primitive bool / new Boolean()', () => {
+            var obj1 = { 'b1': true, };
+            var obj2 = { 'b1': new Boolean(true) };
+            assert.deepEqual(msgpack.decode(msgpack.encode(obj1)), msgpack.decode(msgpack.encode(obj2)));
         });
 
-        it('test primitive string / new String()', ()=> {
-        	var obj1 = {'s1': 'abcd'             };
-        	var obj2 = {'s1': new String('abcd') };
-        	assert.deepEqual(msgpack.decode(msgpack.encode(obj1)), msgpack.decode(msgpack.encode(obj2)));
+        it('test primitive number / new Number()', () => {
+            var obj1 = { 'n1': 1234, };
+            var obj2 = { 'n1': new Number(1234) };
+            assert.deepEqual(msgpack.decode(msgpack.encode(obj1)), msgpack.decode(msgpack.encode(obj2)));
         });
-    });
 
-    it('bson', () => {
-
-        for (var i = 0; i < 8; i++) {
-            var attr = '';
-
-            if (i & 1)
-                attr += 'i';
-            if (i & 2)
-                attr += 'g';
-            if (i & 4)
-                attr += 'm';
-
-            var re = new RegExp('pattern: ' + i, attr);
-            var o = bson.decode(bson.encode({
-                re: re
-            }));
-
-            assert.deepEqual(re, o.re);
-        }
+        it('test primitive string / new String()', () => {
+            var obj1 = { 's1': 'abcd' };
+            var obj2 = { 's1': new String('abcd') };
+            assert.deepEqual(msgpack.decode(msgpack.encode(obj1)), msgpack.decode(msgpack.encode(obj2)));
+        });
     });
 });
 

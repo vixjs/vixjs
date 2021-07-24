@@ -89,18 +89,18 @@ void SandBox::initGlobal(v8::Local<v8::Object> global)
 
     v8::Local<v8::Object> _global = _context->Global();
 
-    _global->Delete(isolate->NewString("console"));
-    _global->Set(isolate->NewString("global"), _global);
+    _global->Delete(_context, isolate->NewString("console"));
+    _global->Set(_context, isolate->NewString("global"), _global);
 
-    JSArray ks = global->GetPropertyNames();
+    JSArray ks = global->GetPropertyNames(_context);
     int32_t len = ks->Length();
     int32_t i;
 
     for (i = 0; i < len; i++) {
-        JSValue k = ks->Get(i);
-        JSValue v = global->Get(k);
+        JSValue k = ks->Get(_context, i);
+        JSValue v = global->Get(_context, k);
 
-        _global->Set(k, v);
+        _global->Set(_context, k, v);
     }
 
     SetPrivate("_global", _global);
@@ -120,12 +120,6 @@ void SandBox::initRoot()
         InstallModule(pModule->name(), pModule->getModule(isolate));
         pModule = pModule->m_next;
     }
-
-    v8::Local<v8::Object> _emitter = EventEmitter_base::class_info().getModule(isolate);
-    _emitter->Set(isolate->NewString("EventEmitter"), _emitter);
-
-    v8::Local<v8::Object> _buffer = Buffer_base::class_info().getModule(isolate);
-    _buffer->Set(isolate->NewString("Buffer"), _buffer);
 }
 
 result_t SandBox::add(exlib::string id, v8::Local<v8::Value> mod)
@@ -143,7 +137,8 @@ result_t SandBox::add(exlib::string id, v8::Local<v8::Value> mod)
 
 result_t SandBox::add(v8::Local<v8::Object> mods)
 {
-    JSArray ks = mods->GetPropertyNames();
+    v8::Local<v8::Context> context = mods->CreationContext();
+    JSArray ks = mods->GetPropertyNames(context);
     int32_t len = ks->Length();
     int32_t i;
     result_t hr;
@@ -151,8 +146,8 @@ result_t SandBox::add(v8::Local<v8::Object> mods)
     Isolate* isolate = holder();
 
     for (i = 0; i < len; i++) {
-        JSValue k = ks->Get(i);
-        hr = add(ToCString(v8::String::Utf8Value(isolate->m_isolate, k)), mods->Get(k));
+        JSValue k = ks->Get(context, i);
+        hr = add(isolate->toString(k), JSValue(mods->Get(context, k)));
         if (hr < 0)
             return hr;
     }
@@ -163,7 +158,8 @@ result_t SandBox::add(v8::Local<v8::Object> mods)
 result_t SandBox::remove(exlib::string id)
 {
     path_base::normalize(id, id);
-    mods()->Delete(holder()->NewString(id));
+    v8::Local<v8::Object> m = mods();
+    m->Delete(m->CreationContext(), holder()->NewString(id));
 
     return 0;
 }
@@ -171,10 +167,8 @@ result_t SandBox::remove(exlib::string id)
 result_t SandBox::has(exlib::string id, bool& retVal)
 {
     path_base::normalize(id, id);
-    retVal = mods()->Has(
-                       Isolate::current()->context(),
-                       holder()->NewString(id))
-                 .ToChecked();
+    v8::Local<v8::Object> m = mods();
+    retVal = m->Has(m->CreationContext(), holder()->NewString(id)).ToChecked();
 
     return 0;
 }
@@ -197,13 +191,14 @@ result_t deepFreeze(v8::Local<v8::Value> v)
     v8::Local<v8::Object> obj = v8::Local<v8::Object>::Cast(v);
 
     if (!isFrozen(obj)) {
-        obj->SetIntegrityLevel(obj->CreationContext(), v8::IntegrityLevel::kFrozen);
-        JSArray names = obj->GetPropertyNames(obj->CreationContext(), v8::KeyCollectionMode::kIncludePrototypes,
+        v8::Local<v8::Context> context = obj->CreationContext();
+        obj->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
+        JSArray names = obj->GetPropertyNames(context, v8::KeyCollectionMode::kIncludePrototypes,
             v8::ALL_PROPERTIES, v8::IndexFilter::kIncludeIndices);
 
         TryCatch try_catch;
         for (int32_t i = 0; i < (int32_t)names->Length(); i++)
-            deepFreeze(obj->Get(JSValue(names->Get(i))));
+            deepFreeze(JSValue(obj->Get(context, JSValue(names->Get(context, i)))));
     }
 
     return 0;
@@ -239,13 +234,14 @@ result_t SandBox::get_modules(v8::Local<v8::Object>& retVal)
     retVal = v8::Object::New(isolate->m_isolate);
 
     v8::Local<v8::Object> ms = mods();
-    JSArray ks = ms->GetPropertyNames();
+    v8::Local<v8::Context> context = ms->CreationContext();
+    JSArray ks = ms->GetPropertyNames(context);
 
     v8::Local<v8::String> mgetter = isolate->NewString("exports");
 
     for (int32_t i = 0, len = ks->Length(); i < len; i++) {
-        JSValue k = ks->Get(i);
-        retVal->Set(k, JSValue((isolate->toLocalObject(JSValue(ms->Get(k))))->Get(mgetter)));
+        JSValue k = ks->Get(context, i);
+        retVal->Set(context, k, JSValue((v8::Local<v8::Object>::Cast(JSValue(ms->Get(context, k))))->Get(context, mgetter)));
     }
 
     return 0;

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 if(NOT "${CLEAN_BUILD}" STREQUAL "true")
-    include(../vender/tools/get_env.cmake)
+    include(../vender/build_tools/cmake-scripts/get_env.cmake)
 
     set(WORK_ROOT $ENV{WORK_ROOT})
     if(NOT WORK_ROOT)
@@ -9,5 +9,5 @@ if(NOT "${CLEAN_BUILD}" STREQUAL "true")
     endif()
 
     set(OUT_PATH "${WORK_ROOT}/out/${CMAKE_HOST_SYSTEM_NAME}_${BUILD_ARCH}_${BUILD_TYPE}")
-    build("${CMAKE_CURRENT_SOURCE_DIR}" "${OUT_PATH}/vixjs")
+    build("${CMAKE_CURRENT_SOURCE_DIR}" "${OUT_PATH}/fibjs")
 endif()

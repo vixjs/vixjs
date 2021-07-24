@@ -5,25 +5,24 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/XmlDocumentType.h"
 #include "XmlNodeImpl.h"
-
-#ifndef XMLDOCUMENTTYPE_H_
-#define XMLDOCUMENTTYPE_H_
 
 namespace fibjs {
 
 class XmlDocumentType : public XmlDocumentType_base, public XmlNodeImpl {
 public:
     XmlDocumentType(XmlDocument_base* document, const char* name)
-        : XmlNodeImpl(document, this, xml_base::_DOCUMENT_TYPE_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_DOCUMENT_TYPE_NODE)
         , m_name(name)
     {
     }
 
     XmlDocumentType(XmlDocument_base* document, const char* name,
         const char* systemId, const char* publicId)
-        : XmlNodeImpl(document, this, xml_base::_DOCUMENT_TYPE_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_DOCUMENT_TYPE_NODE)
         , m_name(name)
         , m_systemId(systemId)
         , m_publicId(publicId)
@@ -31,7 +30,7 @@ public:
     }
 
     XmlDocumentType(const XmlDocumentType& from)
-        : XmlNodeImpl(from.m_document, this, xml_base::_DOCUMENT_TYPE_NODE)
+        : XmlNodeImpl(from.m_document, this, xml_base::C_DOCUMENT_TYPE_NODE)
         , m_name(from.m_name)
         , m_systemId(from.m_systemId)
         , m_publicId(from.m_publicId)
@@ -79,4 +78,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* XMLDOCUMENTTYPE_H_ */

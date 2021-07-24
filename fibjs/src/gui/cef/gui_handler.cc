@@ -44,8 +44,19 @@ bool GuiHandler::RunContextMenu(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFram
     return stop_menu;
 }
 
-void GuiHandler::OnTitleChange(CefRefPtr<CefBrowser> browser,
-    const CefString& title)
+void GuiHandler::OnAddressChange(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
+    const CefString& url)
+{
+    if (frame->IsMain()) {
+        BrowserList::iterator bit = fromBrowser(browser);
+        if (bit != browser_list_.end()) {
+            Variant v = url.ToString().c_str();
+            (*bit)->_emit("address", &v, 1);
+        }
+    }
+}
+
+void GuiHandler::OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title)
 {
 #ifndef Darwin
     CefRefPtr<CefBrowserView> browser_view = CefBrowserView::GetForBrowser(browser);
@@ -57,6 +68,12 @@ void GuiHandler::OnTitleChange(CefRefPtr<CefBrowser> browser,
 #else
     PlatformTitleChange(browser, title);
 #endif
+
+    BrowserList::iterator bit = fromBrowser(browser);
+    if (bit != browser_list_.end()) {
+        Variant v = title.ToString().c_str();
+        (*bit)->_emit("title", &v, 1);
+    }
 }
 
 bool GuiHandler::OnBeforePopup(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
@@ -98,11 +115,11 @@ void GuiHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser)
 
         if ((*bit)->m_bHeadless) {
             (*bit)->_emit("closed");
-            (*bit)->holder()->Unref();
+            (*bit)->isolate_unref();
         } else {
 #ifdef Linux
             (*bit)->_emit("closed");
-            (*bit)->holder()->Unref();
+            (*bit)->isolate_unref();
 #endif
         }
         browser_list_.erase(bit);
@@ -115,12 +132,12 @@ bool GuiHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
     const CefString& source, int line)
 {
     static int32_t console_level[] = {
-        console_base::_NOTSET,
-        console_base::_DEBUG,
-        console_base::_INFO,
-        console_base::_WARN,
-        console_base::_ERROR,
-        console_base::_FATAL
+        console_base::C_NOTSET,
+        console_base::C_DEBUG,
+        console_base::C_INFO,
+        console_base::C_WARN,
+        console_base::C_ERROR,
+        console_base::C_FATAL
     };
 
     BrowserList::iterator bit = fromBrowser(browser);
@@ -129,6 +146,48 @@ bool GuiHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
 
     outLog(console_level[level], message.ToString());
     return true;
+}
+
+void GuiHandler::OnBeforeDownload(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDownloadItem> download_item,
+    const CefString& suggested_name, CefRefPtr<CefBeforeDownloadCallback> callback)
+{
+    exlib::string download_path = suggested_name.ToString();
+    bool download_dialog = true;
+
+    BrowserList::iterator bit = fromBrowser(browser);
+    if (bit != browser_list_.end()) {
+        download_dialog = (*bit)->m_download_dialog;
+        if (!(*bit)->m_download_path.empty())
+            download_path = (*bit)->m_download_path + '/' + download_path;
+    }
+
+    callback->Continue(download_path.c_str(), download_dialog);
+}
+
+void GuiHandler::OnDownloadUpdated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDownloadItem> download_item,
+    CefRefPtr<CefDownloadItemCallback> callback)
+{
+    if (download_item->IsValid()) {
+        BrowserList::iterator bit = fromBrowser(browser);
+        if (bit != browser_list_.end()) {
+            obj_ptr<NObject> o = new NObject();
+
+            o->add("url", download_item->GetURL().ToString().c_str());
+            o->add("total", download_item->GetTotalBytes());
+            o->add("download", download_item->GetReceivedBytes());
+
+            if (download_item->IsInProgress())
+                o->add("status", "progress");
+            else if (download_item->IsCanceled())
+                o->add("status", "abort");
+            else if (download_item->IsComplete())
+                o->add("status", "complete");
+
+            Variant v = o;
+
+            (*bit)->_emit("download", &v, 1);
+        }
+    }
 }
 
 void GuiHandler::OnLoadError(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,

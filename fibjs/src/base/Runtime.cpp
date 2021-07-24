@@ -13,6 +13,7 @@
 #include "Fiber.h"
 #include "SandBox.h"
 #include "HttpClient.h"
+#include "X509Cert.h"
 #include "console.h"
 #include "LruCache.h"
 #include "EventEmitter.h"
@@ -24,9 +25,7 @@
 #include "path.h"
 #include "options.h"
 #include "include/libplatform/libplatform.h"
-
-#include <jssdk/include/jssdk.h>
-#include <jssdk/include/jssdk-threads.h>
+#include "fibjs.h"
 
 namespace fibjs {
 
@@ -44,7 +43,7 @@ result_t ifZipFile(exlib::string filename, bool& retVal);
 
 exlib::string s_root;
 
-static void prepareForFiberService()
+static void createBasisForFiberLoop(platform_creator get_platform)
 {
     ::setlocale(LC_ALL, "");
 
@@ -56,7 +55,7 @@ static void prepareForFiberService()
     if (cpus < 2)
         cpus = 2;
 
-    fiberServiceInitializeWorkers(cpus + 1);
+    exlib::Service::init(cpus + 1);
 
     InitializeDateUtils();
     InitializeAcPool();
@@ -70,16 +69,19 @@ static void prepareForFiberService()
 
     srand((unsigned int)time(0));
 
-    js::v8_api->init();
+    static std::unique_ptr<v8::Platform> platform = get_platform ? get_platform() : v8::platform::NewDefaultPlatform();
+    v8::V8::InitializePlatform(platform.get());
+    v8::V8::Initialize();
 }
 
-void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isolate*))
+void start(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isolate*), platform_creator get_platform)
 {
     class EntryThread : public exlib::OSThread {
     public:
-        EntryThread(int32_t argc, char** argv, result_t (*jsFiber)(Isolate*))
+        EntryThread(int32_t argc, char** argv, result_t (*jsFiber)(Isolate*), platform_creator get_platform)
             : m_argc(argc)
             , m_jsFiber(jsFiber)
+            , m_get_platform(get_platform)
         {
             for (int32_t i = 0; i < argc; i++)
                 m_argv.push_back(argv[i]);
@@ -90,7 +92,7 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
         {
             EntryThread* th = (EntryThread*)p;
             Isolate* isolate = new Isolate(th->m_fibjsEntry);
-            requestIsolateRun(isolate, th->m_jsFiber, isolate);
+            syncCall(isolate, th->m_jsFiber, isolate);
         }
 
         virtual void Run()
@@ -129,15 +131,10 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
             m_sem.Post();
 
             if (!g_cefprocess) {
-                prepareForFiberService();
+                createBasisForFiberLoop(m_get_platform);
 
                 if (pos < argc) {
-                    if (argv[pos][0] == '-')
-                        m_fibjsEntry = argv[pos];
-                    else {
-                        m_fibjsEntry = s_root;
-                        resolvePath(m_fibjsEntry, argv[pos]);
-                    }
+                    m_fibjsEntry = argv[pos];
 
                     if (pos != 1) {
                         int32_t p = 1;
@@ -149,8 +146,8 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
 
                 init_argv(argc, argv);
 
-                fiberServiceStartThread(FirstFiber, this, 256 * 1024, "start");
-                fiberServiceStartLoop();
+                exlib::Service::CreateFiber(FirstFiber, this, 256 * 1024, "start");
+                exlib::Service::dispatch();
             }
         }
 
@@ -162,11 +159,10 @@ void startJavascriptApp(int32_t argc, char** argv, result_t (*jsEntryFiber)(Isol
         std::vector<char*> m_argv;
         exlib::string m_fibjsEntry;
         result_t (*m_jsFiber)(Isolate*);
+        platform_creator m_get_platform;
     };
 
-    js::setup_v8();
-
-    EntryThread* entryThread = new EntryThread(argc, argv, jsEntryFiber);
+    EntryThread* entryThread = new EntryThread(argc, argv, jsEntryFiber, get_platform);
     entryThread->start();
 
     entryThread->m_sem.Wait();
@@ -223,6 +219,8 @@ Isolate::SnapshotJsScope::SnapshotJsScope(Isolate* cur)
 
     fb->m_c_entry_fp_ = _fi.entry_fp;
     fb->m_handler_ = _fi.handle;
+
+    m_isolate->m_isolate->RunMicrotasks();
 }
 
 Isolate::SnapshotJsScope::~SnapshotJsScope()
@@ -268,13 +266,16 @@ Isolate::Isolate(exlib::string jsFilename)
     , m_flake_host(0)
     , m_flake_count(0)
     , m_console_colored(true)
-    , m_loglevel(console_base::_NOTSET)
+    , m_loglevel(console_base::C_NOTSET)
     , m_defaultMaxListeners(10)
     , m_exitCode(0)
     , m_enable_FileSystem(true)
     , m_safe_buffer(false)
     , m_max_buffer_size(-1)
+    , m_ca(new X509Cert())
 {
+    s_isolates.putTail(this);
+
     m_fname = jsFilename;
 
     static v8::Isolate::CreateParams create_params;
@@ -301,7 +302,7 @@ Isolate::Isolate(exlib::string jsFilename)
     m_currentFibers++;
     m_idleFibers++;
 
-    fiberServiceStartThread(FiberProcIsolate, this, stack_size * 1024, "JSFiber");
+    exlib::Service::CreateFiber(FiberProcIsolate, this, stack_size * 1024, "JSFiber");
 }
 
 Isolate* Isolate::current()
@@ -315,8 +316,6 @@ Isolate* Isolate::current()
 
 void Isolate::init()
 {
-    s_isolates.putTail(this);
-
     v8::Locker locker(m_isolate);
     v8::Isolate::Scope isolate_scope(m_isolate);
     v8::HandleScope handle_scope(m_isolate);
@@ -335,7 +334,7 @@ void Isolate::init()
 
     _context->SetEmbedderData(1, v8::Object::New(m_isolate)->GetPrototype());
 
-    static const char* skips[] = { "Master", "repl", "argv", "__filename", "__dirname", NULL };
+    static const char* skips[] = { "Master", "argv", "__filename", "__dirname", NULL };
     global_base::class_info().Attach(this, _context->Global(), skips);
 
     m_topSandbox = new SandBox();
@@ -399,7 +398,7 @@ void Isolate::Unref(int32_t hr)
     if (s_iso_ref.dec() == 0) {
         Isolate* isolate = s_isolates.head();
         isolate->m_hr = hr;
-        requestIsolateRun(isolate, syncExit, isolate);
+        syncCall(isolate, syncExit, isolate);
     }
 }
 
@@ -425,7 +424,7 @@ void Isolate::RequestInterrupt(v8::InterruptCallback callback, void* data)
 {
     m_isolate->RequestInterrupt(callback, data);
     if (m_has_timer.CompareAndSwap(0, 1) == 0)
-        requestIsolateRun(this, js_timer, this);
+        syncCall(this, js_timer, this);
 }
 
 } /* namespace fibjs */

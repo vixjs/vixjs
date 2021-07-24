@@ -6,7 +6,7 @@
  * @desc WebView Implementation in OSX
  */
 
-#if defined(__APPLE__) && !defined(VIXJS_DISABLE_GUI)
+#if defined(__APPLE__) && !defined(FIBJS_DISABLE_GUI)
 
 #include <Cocoa/Cocoa.h>
 #include <Webkit/Webkit.h>
@@ -44,7 +44,6 @@ NSEvent* getEmptyCustomNSEvent()
 }
 
 static exlib::LockedList<AsyncEvent> s_uiPool;
-static exlib::OSThread* s_thNSMainLoop;
 
 void os_putGuiPool(AsyncEvent* ac)
 {
@@ -70,11 +69,9 @@ void run_os_gui()
 {
     @autoreleasepool {
         [NSApplication sharedApplication];
-
-        [[NSApplication sharedApplication] setActivationPolicy:NSApplicationActivationPolicyAccessory];
+        [[NSApplication sharedApplication] setActivationPolicy:NSApplicationActivationPolicyRegular];
         [[NSApplication sharedApplication] finishLaunching];
-
-        s_thNSMainLoop = exlib::OSThread::current();
+        [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 
         while (true) {
             AsyncEvent* p = s_uiPool.getHead();
@@ -128,7 +125,7 @@ WebView::WebView(exlib::string url, NObject* opt)
     : m_bDebug(true)
     , m_bIScriptLoaded(false)
 {
-    holder()->Ref();
+    isolate_ref();
 
     m_opt = opt;
     m_url = url;
@@ -146,6 +143,8 @@ WebView::WebView(exlib::string url, NObject* opt)
 
 WebView::~WebView()
 {
+    [m_nsWindow autorelease];
+    [m_wkWebView autorelease];
 }
 
 bool WebView::onNSWindowShouldClose()
@@ -160,7 +159,7 @@ bool WebView::onNSWindowShouldClose()
         ^(id result, NSError* _Nullable error) {
             if (error != nil) {
                 if (m_bDebug)
-                    asyncLog(console_base::_DEBUG, NSStringToExString([error localizedDescription]));
+                    asyncLog(console_base::C_DEBUG, NSStringToExString([error localizedDescription]));
 
                 forceCloseWindow();
             } else {
@@ -203,13 +202,14 @@ static int32_t asyncOutputMessageFromWKWebview(exlib::string& jsonFmt)
     v8::Local<v8::Object> logInfo = v8::Local<v8::Object>::Cast(_logInfo);
 
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
 
-    int32_t logLevel = isolate->toInteger(JSValue(logInfo->Get(isolate->NewString("level"))));
+    int32_t logLevel = isolate->toInteger(JSValue(logInfo->Get(context, isolate->NewString("level"))));
 
-    v8::Local<v8::Value> _fmtMessage = logInfo->Get(isolate->NewString("fmt"));
-    exlib::string fmtMessage(ToCString(v8::String::Utf8Value(isolate->m_isolate, _fmtMessage)));
+    JSValue _fmtMessage = logInfo->Get(context, isolate->NewString("fmt"));
+    exlib::string fmtMessage(isolate->toString(_fmtMessage));
 
-    if (logLevel == console_base::_ERROR)
+    if (logLevel == console_base::C_ERROR)
         fmtMessage = ("WebView Error: " + fmtMessage);
 
     asyncLog(logLevel, fmtMessage);
@@ -225,7 +225,7 @@ void WebView::onWKWebViewExternalLogMessage(WKScriptMessage* message)
     const char* externalLogMsg = (const char*)([[message body] UTF8String]);
     exlib::string payload(externalLogMsg);
 
-    requestIsolateRun(holder(), asyncOutputMessageFromWKWebview, payload);
+    syncCall(holder(), asyncOutputMessageFromWKWebview, payload);
 }
 
 extern const wchar_t* g_console_js;
@@ -323,19 +323,14 @@ void WebView::initNSWindow()
                     backing:NSBackingStoreBuffered
                       defer:YES];
 
-    [m_nsWindow autorelease];
-
     os_config_window(this, m_nsWindow, m_opt);
 }
 
 void WebView::initWKWebView()
 {
-    m_wkWebView = [
-        [WKWebView alloc]
+    m_wkWebView = [[WKWebView alloc]
         initWithFrame:CGRectMake(0, 0, 400, 300)
         configuration:createWKWebViewConfig()];
-
-    [m_wkWebView autorelease];
 
     assignToWKWebView(m_wkWebView);
 }
@@ -354,11 +349,6 @@ void WebView::startWKUI()
 
     m_nsWindow.contentView = m_wkWebView;
     [m_nsWindow.contentView setWantsLayer:YES];
-
-    [m_nsWindow makeKeyWindow];
-    [m_nsWindow orderFrontRegardless];
-
-    [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 }
 
 int WebView::initializeWebView()
@@ -528,6 +518,12 @@ result_t WebView::postMessage(exlib::string msg, AsyncEvent* ac)
 
     evaluateWebviewJS(c_jsstr.c_str());
 
+    return 0;
+}
+
+result_t WebView::get_type(exlib::string& retVal)
+{
+    retVal = "native";
     return 0;
 }
 

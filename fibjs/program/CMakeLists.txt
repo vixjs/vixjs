@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 2.6)
 
-set(name "vixjs")
+set(name "fibjs")
 project(${name})
 
-include(${CMAKE_CURRENT_LIST_DIR}/../../vender/tools/option.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../../vender/build_tools/cmake//option.cmake)
 
 if (${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
 	if(NOT MSVC)
@@ -22,14 +22,14 @@ else()
 endif()
 
 if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Darwin" AND ${ARCH} STREQUAL "i386")
-	add_definitions(-DVIXJS_DISABLE_GUI)
+	add_definitions(-DFIBJS_DISABLE_GUI)
 endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../../../bin/${CMAKE_HOST_SYSTEM_NAME}_${ARCH}_${BUILD_TYPE})
 
 include_directories("${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/../include" "${PROJECT_SOURCE_DIR}/../../vender" "${PROJECT_SOURCE_DIR}/../../vender/v8" "${PROJECT_SOURCE_DIR}/../../vender/v8/include" "${PROJECT_SOURCE_DIR}/../../vender/mbedtls" "${PROJECT_SOURCE_DIR}/../../vender/zlib/include" "${CMAKE_CURRENT_BINARY_DIR}")
 
-set(libs vixjs cef expat gumbo gd tiff jpeg png webp zlib leveldb snappy msgpack pcre sqlite mongo umysql uuid exif mbedtls v8 unzip uv exlib jssdk)
+set(libs fibjs cef expat gumbo gd tiff jpeg png webp zlib leveldb snappy msgpack pcre sqlite mongo umysql uuid exif mbedtls v8 unzip uv exlib)
 
 if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
 	list(APPEND libs winiconv)

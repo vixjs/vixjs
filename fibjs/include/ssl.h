@@ -5,8 +5,7 @@
  *      Author: lion
  */
 
-#ifndef _fj_SSL_H_
-#define _fj_SSL_H_
+#pragma once
 
 #include "ifs/ssl.h"
 #include <mbedtls/mbedtls/config.h>
@@ -30,7 +29,7 @@ public:
             (const unsigned char*)"fibjs", 5);
 
         mbedtls_ssl_cache_init(&m_cache);
-        m_authmode = ssl_base::_VERIFY_REQUIRED;
+        m_authmode = ssl_base::C_VERIFY_REQUIRED;
 
         m_min_version = MBEDTLS_SSL_MINOR_VERSION_0;
         m_max_version = MBEDTLS_SSL_MINOR_VERSION_3;
@@ -45,12 +44,6 @@ public:
 
 public:
     static result_t setError(int32_t ret);
-    obj_ptr<X509Cert>& ca()
-    {
-        if (!m_ca)
-            m_ca = new X509Cert();
-        return m_ca;
-    }
 
 public:
     mbedtls_ssl_cache_context m_cache;
@@ -70,5 +63,3 @@ private:
 extern _ssl g_ssl;
 
 } /* namespace fibjs */
-
-#endif /* _fj_SSL_H_ */

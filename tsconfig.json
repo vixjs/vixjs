@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "typeRoots": [
+            "npm",
+            "node_modules"
+        ]
+    },
+    "typeAcquisition": {
+        "include": [
+            "@fibjs/types"
+        ],
+        "exclude": [
+            "node",
+            "@types/node"
+        ]
+    }
+}

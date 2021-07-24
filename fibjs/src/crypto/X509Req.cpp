@@ -103,7 +103,7 @@ result_t X509Req::create(exlib::string subject, PKey_base* key, int32_t hash)
     exlib::string buf;
     buf.resize(mbedtls_pk_get_bitlen(k) * 8 + 128);
 
-    ret = mbedtls_x509write_csr_pem(&csr, (unsigned char*)&buf[0], buf.length(),
+    ret = mbedtls_x509write_csr_pem(&csr, (unsigned char*)buf.c_buffer(), buf.length(),
         mbedtls_ctr_drbg_random, &g_ssl.ctr_drbg);
     mbedtls_x509write_csr_free(&csr);
     if (ret != 0)
@@ -180,7 +180,7 @@ result_t X509Req::exportPem(exlib::string& retVal)
     buf.resize(m_csr.raw.len * 2 + 64);
     ret = mbedtls_pem_write_buffer(PEM_BEGIN_CSR, PEM_END_CSR,
         m_csr.raw.p, m_csr.raw.len,
-        (unsigned char*)&buf[0], buf.length(), &olen);
+        (unsigned char*)buf.c_buffer(), buf.length(), &olen);
     if (ret != 0)
         return CHECK_ERROR(_ssl::setError(ret));
 
@@ -271,6 +271,7 @@ result_t X509Req::sign(exlib::string issuer, PKey_base* key,
 
     if (ac->isSync()) {
         Isolate* isolate = holder();
+        v8::Local<v8::Context> context = isolate->context();
         mbedtls_mpi serial;
         JSValue v;
 
@@ -287,9 +288,9 @@ result_t X509Req::sign(exlib::string issuer, PKey_base* key,
             goto exit;
         }
 
-        mbedtls_x509write_crt_set_md_alg(&m_crt, MBEDTLS_MD_SHA1);
+        mbedtls_x509write_crt_set_md_alg(&m_crt, (mbedtls_md_type_t)hash);
 
-        v = opts->Get(isolate->NewString("serial", 6));
+        v = opts->Get(context, isolate->NewString("serial", 6));
         if (!IsEmpty(v)) {
             v8::String::Utf8Value str(isolate->m_isolate, v);
 
@@ -364,7 +365,7 @@ result_t X509Req::sign(exlib::string issuer, PKey_base* key,
             goto exit;
         }
 
-        int32_t key_usage = parseString(opts->Get(isolate->NewString("usage", 5)), X509Cert::g_usages);
+        int32_t key_usage = parseString(JSValue(opts->Get(context, isolate->NewString("usage", 5))), X509Cert::g_usages);
         if (key_usage < 0) {
             hr = key_usage;
             goto exit;
@@ -376,7 +377,7 @@ result_t X509Req::sign(exlib::string issuer, PKey_base* key,
             }
         }
 
-        int32_t cert_type = parseString(opts->Get(isolate->NewString("type", 4)), X509Cert::g_types);
+        int32_t cert_type = parseString(JSValue(opts->Get(context, isolate->NewString("type", 4))), X509Cert::g_types);
         if (cert_type < 0) {
             hr = cert_type;
             goto exit;
@@ -426,7 +427,7 @@ result_t X509Req::sign(exlib::string issuer, PKey_base* key,
 
     buf.resize(mbedtls_pk_get_bitlen(pk) * 8 + 128);
 
-    ret = mbedtls_x509write_crt_pem(&m_crt, (unsigned char*)&buf[0], buf.length(),
+    ret = mbedtls_x509write_crt_pem(&m_crt, (unsigned char*)buf.c_buffer(), buf.length(),
         mbedtls_ctr_drbg_random, &g_ssl.ctr_drbg);
     if (ret < 0) {
         hr = CHECK_ERROR(_ssl::setError(ret));
@@ -453,13 +454,24 @@ result_t X509Req::get_subject(exlib::string& retVal)
 
     buf.resize(1024);
 
-    ret = mbedtls_x509_dn_gets(&buf[0], buf.length(), &m_csr.subject);
+    ret = mbedtls_x509_dn_gets(buf.c_buffer(), buf.length(), &m_csr.subject);
     if (ret < 0)
         return CHECK_ERROR(_ssl::setError(ret));
 
     buf.resize(ret);
     retVal = buf;
 
+    return 0;
+}
+
+result_t X509Req::get_sig_md(int32_t& retVal)
+{
+    retVal = m_csr.sig_md;
+    return 0;
+}
+result_t X509Req::get_sig_pk(int32_t& retVal)
+{
+    retVal = m_csr.sig_pk;
     return 0;
 }
 

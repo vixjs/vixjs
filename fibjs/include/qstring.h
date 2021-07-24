@@ -5,13 +5,16 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include <string>
 #include <exlib/include/qstring.h>
 
-#ifndef QSTRING_H_
-#define QSTRING_H_
-
 namespace fibjs {
+
+#ifndef ssize_t
+typedef intptr_t ssize_t;
+#endif
 
 template <typename T>
 inline bool qisspace(T ch)
@@ -78,7 +81,7 @@ inline int32_t qchricmp(T ch1, T ch2)
 }
 
 template <typename T>
-inline int32_t qstricmp(const T* s1, const T* s2, int32_t sz = -1)
+inline int32_t qstricmp(const T* s1, const T* s2, ssize_t sz = -1)
 {
     if (s1 == s2)
         return 0;
@@ -93,7 +96,7 @@ inline int32_t qstricmp(const T* s1, const T* s2, int32_t sz = -1)
 }
 
 template <typename T>
-inline int32_t qstrcmp(const T* s1, const T* s2, int32_t sz = -1)
+inline int32_t qstrcmp(const T* s1, const T* s2, ssize_t sz = -1)
 {
     if (s1 == s2)
         return 0;
@@ -165,7 +168,7 @@ inline const T* qstristr(const T* in, const T* str)
     if (!c)
         return NULL;
 
-    int32_t len = (int32_t)qstrlen(str);
+    ssize_t len = qstrlen(str);
 
     while ((in = qstrichr(in, c)) && qstricmp(in, str, len))
         in++;
@@ -181,7 +184,7 @@ inline const T* qstrstr(const T* in, const T* str)
     if (!c)
         return NULL;
 
-    int32_t len = (int32_t)qstrlen(str);
+    ssize_t len = qstrlen(str);
 
     while ((in = qstrchr(in, c)) && qstrcmp(in, str, len))
         in++;
@@ -206,5 +209,3 @@ inline void qstrupr(T* s)
         *s++ = qtoupper(c);
 }
 }
-
-#endif /* QSTRING_H_ */

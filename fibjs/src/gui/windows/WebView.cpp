@@ -99,7 +99,16 @@ private:
             m_pProtSink = pIProtSink;
             m_pProtSink->AddRef();
 
-            result_t hr = fs_base::cc_openFile(utf16to8String(szUrl + 5), "r", m_file, s_isolates.head());
+            exlib::string origin(utf16to8String(szUrl));
+            if (!qstrcmp(origin.c_str(), "fs://", 5)) {
+                origin = origin.substr(5, origin.length());
+            }
+
+            int len = (int)origin.length();
+            if (len > 0 && origin[len - 1] == '/')
+                origin.resize(len - 1);
+
+            result_t hr = fs_base::cc_openFile(origin, "r", m_file, s_isolates.head());
             if (hr < 0)
                 return INET_E_OBJECT_NOT_FOUND;
 
@@ -230,7 +239,11 @@ private:
                 while (qisascii(*ptr) || qisdigit(*ptr))
                     ptr++;
 
-                if (*ptr == ':')
+                // expect fs://
+                if (!qstrcmp(ptr, L"://", 3))
+                    return INET_E_DEFAULT_ACTION;
+                // but fs: is allowed too.
+                else if (*ptr == ':')
                     return INET_E_DEFAULT_ACTION;
             }
 
@@ -384,9 +397,9 @@ result_t os_gui_setVersion(int32_t ver)
     os_base::get_execPath(p);
     path_base::basename(p, "", exe);
 
-    registry_base::set(registry_base::_CURRENT_USER,
+    registry_base::set(registry_base::C_CURRENT_USER,
         "SOFTWARE\\Microsoft\\Internet Explorer\\Main\\FeatureControl\\FEATURE_BROWSER_EMULATION\\" + exe,
-        ver, registry_base::_DWORD);
+        ver, registry_base::C_DWORD);
 
     return 0;
 }
@@ -439,7 +452,7 @@ static void RegMainClass()
 
 WebView::WebView(exlib::string url, NObject* opt)
 {
-    holder()->Ref();
+    isolate_ref();
 
     m_url = url;
     m_opt = opt;
@@ -845,6 +858,12 @@ result_t WebView::postMessage(exlib::string msg, AsyncEvent* ac)
 
     _variant_t vResult;
     return postMessage(msg, vResult);
+}
+
+result_t WebView::get_type(exlib::string& retVal)
+{
+    retVal = "native";
+    return 0;
 }
 
 result_t WebView::get_dev(v8::Local<v8::Value>& retVal)

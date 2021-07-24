@@ -128,7 +128,7 @@ result_t BufferedStream::read(int32_t bytes, obj_ptr<Buffer_base>& retVal,
             if (m_pos == 0)
                 retVal = new Buffer(m_buf);
             else {
-                exlib::string s1(&m_buf[m_pos], n);
+                exlib::string s1(m_buf.substr(m_pos, n));
                 retVal = new Buffer(s1);
             }
             m_pos += n;
@@ -239,6 +239,7 @@ result_t BufferedStream::readLines(int32_t maxlines, v8::Local<v8::Array>& retVa
     exlib::string str;
     int32_t n = 0;
     Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
     retVal = v8::Array::New(isolate->m_isolate);
 
     if (maxlines == 0)
@@ -252,7 +253,7 @@ result_t BufferedStream::readLines(int32_t maxlines, v8::Local<v8::Array>& retVa
         if (hr > 0)
             return 0;
 
-        retVal->Set(n++, isolate->NewString(str));
+        retVal->Set(context, n++, isolate->NewString(str));
         if (maxlines > 0) {
             maxlines--;
             if (maxlines == 0)

@@ -4,8 +4,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _fj_classinfo_H_
-#define _fj_classinfo_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -167,6 +166,17 @@ public:
         return true;
     }
 
+    v8::Local<v8::Name> get_prop_name(Isolate* isolate, const char* name)
+    {
+        if (name[0] != '@')
+            return isolate->NewString(name);
+
+        if (!qstrcmp("iterator", name + 1))
+            return v8::Symbol::GetIterator(isolate->m_isolate);
+
+        return isolate->NewString(name);
+    }
+
     bool has(const char* name)
     {
         int32_t i;
@@ -210,8 +220,8 @@ public:
                         ;
 
                 if (!skips || !skips[j])
-                    o->Set(isolate->NewString(m_cd.cms[i].name),
-                        isolate->NewFunction(m_cd.name, m_cd.cms[i].invoker));
+                    o->Set(_context, get_prop_name(isolate, m_cd.cms[i].name),
+                        isolate->NewFunction(m_cd.cms[i].name, m_cd.cms[i].invoker));
             }
         }
 
@@ -221,7 +231,7 @@ public:
                     ;
 
             if (!skips || !skips[j])
-                o->Set(isolate->NewString(m_cd.cos[i].name),
+                o->Set(_context, isolate->NewString(m_cd.cos[i].name),
                     m_cd.cos[i].invoker().getModule(isolate));
         }
 
@@ -232,7 +242,7 @@ public:
                         ;
 
                 if (!skips || !skips[j])
-                    o->SetAccessor(_context, isolate->NewString(m_cd.cps[i].name),
+                    o->SetAccessor(_context, get_prop_name(isolate, m_cd.cps[i].name),
                          m_cd.cps[i].getter, m_cd.cps[i].setter)
                         .ToChecked();
             }
@@ -243,7 +253,7 @@ public:
                     ;
 
             if (!skips || !skips[j])
-                o->Set(isolate->NewString(m_cd.ccs[i].name),
+                o->Set(_context, isolate->NewString(m_cd.ccs[i].name),
                     v8::Number::New(isolate->m_isolate, m_cd.ccs[i].value));
         }
 
@@ -270,13 +280,14 @@ public:
     intptr_t dump(v8::Local<v8::Object>& o)
     {
         Isolate* isolate = Isolate::current();
+        v8::Local<v8::Context> context = isolate->context();
         intptr_t cnt = refs_;
 
         if (cnt) {
             o = v8::Object::New(isolate->m_isolate);
-            o->Set(isolate->NewString("class"),
+            o->Set(context, isolate->NewString("class"),
                 isolate->NewString(m_cd.name));
-            o->Set(isolate->NewString("objects"),
+            o->Set(context, isolate->NewString("objects"),
                 v8::Integer::New(isolate->m_isolate, (int32_t)cnt));
 
             v8::Local<v8::Array> inherits = v8::Array::New(isolate->m_isolate);
@@ -288,12 +299,12 @@ public:
                 v8::Local<v8::Object> o1;
                 intptr_t cnt1 = p->dump(o1);
                 if (cnt1)
-                    inherits->Set((int32_t)(icnt++), o1);
+                    inherits->Set(context, (int32_t)(icnt++), o1);
                 p = p->m_next;
             }
 
             if (icnt)
-                o->Set(isolate->NewString("inherits"), inherits);
+                o->Set(context, isolate->NewString("inherits"), inherits);
         }
 
         return cnt;
@@ -318,6 +329,8 @@ private:
 
         isolate->m_classInfo[m_id] = _cache = new cache();
 
+        v8::Local<v8::Context> context = isolate->context();
+
         if (!m_cd.module) {
             v8::Local<v8::FunctionTemplate> _class = v8::FunctionTemplate::New(
                 isolate->m_isolate, m_cd.cor);
@@ -337,18 +350,12 @@ private:
 
             for (i = 0; i < m_cd.mc; i++)
                 if (!m_cd.cms[i].is_static)
-                    pt->Set(isolate->NewString(m_cd.cms[i].name),
+                    pt->Set(get_prop_name(isolate, m_cd.cms[i].name),
                         v8::FunctionTemplate::New(isolate->m_isolate, m_cd.cms[i].invoker));
-
-            for (i = 0; i < m_cd.oc; i++) {
-                cache* _cache1 = m_cd.cos[i].invoker()._init(isolate);
-                pt->Set(isolate->NewString(m_cd.cos[i].name),
-                    v8::Local<v8::FunctionTemplate>::New(isolate->m_isolate, _cache1->m_class));
-            }
 
             for (i = 0; i < m_cd.pc; i++)
                 if (!m_cd.cps[i].is_static)
-                    pt->SetAccessor(isolate->NewString(m_cd.cps[i].name),
+                    pt->SetAccessor(get_prop_name(isolate, m_cd.cps[i].name),
                         m_cd.cps[i].getter, m_cd.cps[i].setter,
                         v8::Local<v8::Value>(), v8::DEFAULT, v8::DontDelete);
 
@@ -381,8 +388,9 @@ private:
             if (m_cd.caf)
                 ot->SetCallAsFunctionHandler(m_cd.caf);
 
-            v8::Local<v8::Function> _function = _class->GetFunction();
-            Attach(isolate, _function);
+            v8::Local<v8::Function> _function;
+
+            _class->GetFunction(context).ToLocal(&_function);
             _cache->m_function.Reset(isolate->m_isolate, _function);
 
             if (m_cd.cor) {
@@ -390,16 +398,19 @@ private:
                 o->SetAlignedPointerInInternalField(0, 0);
                 _cache->m_cache.Reset(isolate->m_isolate, o);
             }
+
+            Attach(isolate, _function);
         } else {
             v8::Local<v8::Object> o;
 
             if (m_cd.caf)
-                o = v8::Function::New(isolate->m_isolate, m_cd.caf);
+                v8::Function::New(context, m_cd.caf).ToLocal(&o);
             else
                 o = v8::Object::New(isolate->m_isolate);
 
-            Attach(isolate, o);
             _cache->m_cache.Reset(isolate->m_isolate, o);
+
+            Attach(isolate, o);
         }
 
         return _cache;
@@ -413,5 +424,3 @@ private:
     int32_t m_id;
 };
 }
-
-#endif

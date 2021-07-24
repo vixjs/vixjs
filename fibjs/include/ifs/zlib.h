@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _zlib_base_H_
-#define _zlib_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -24,10 +23,10 @@ class zlib_base : public object_base {
 
 public:
     enum {
-        _NO_COMPRESSION = 0,
-        _BEST_SPEED = 1,
-        _BEST_COMPRESSION = 9,
-        _DEFAULT_COMPRESSION = -1
+        C_NO_COMPRESSION = 0,
+        C_BEST_SPEED = 1,
+        C_BEST_COMPRESSION = 9,
+        C_DEFAULT_COMPRESSION = -1
     };
 
 public:
@@ -150,10 +149,10 @@ inline ClassInfo& zlib_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "NO_COMPRESSION", _NO_COMPRESSION },
-        { "BEST_SPEED", _BEST_SPEED },
-        { "BEST_COMPRESSION", _BEST_COMPRESSION },
-        { "DEFAULT_COMPRESSION", _DEFAULT_COMPRESSION }
+        { "NO_COMPRESSION", C_NO_COMPRESSION },
+        { "BEST_SPEED", C_BEST_SPEED },
+        { "BEST_COMPRESSION", C_BEST_COMPRESSION },
+        { "DEFAULT_COMPRESSION", C_DEFAULT_COMPRESSION }
     };
 
     static ClassData s_cd = {
@@ -275,7 +274,7 @@ inline void zlib_base::s_static_deflate(const v8::FunctionCallbackInfo<v8::Value
     ASYNC_METHOD_OVER(2, 1);
 
     ARG(obj_ptr<Buffer_base>, 0);
-    OPT_ARG(int32_t, 1, _DEFAULT_COMPRESSION);
+    OPT_ARG(int32_t, 1, C_DEFAULT_COMPRESSION);
 
     if (!cb.IsEmpty())
         hr = acb_deflate(v0, v1, cb, args);
@@ -294,7 +293,7 @@ inline void zlib_base::s_static_deflateTo(const v8::FunctionCallbackInfo<v8::Val
 
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Stream_base>, 1);
-    OPT_ARG(int32_t, 2, _DEFAULT_COMPRESSION);
+    OPT_ARG(int32_t, 2, C_DEFAULT_COMPRESSION);
 
     if (!cb.IsEmpty())
         hr = acb_deflateTo(v0, v1, v2, cb, args);
@@ -305,7 +304,7 @@ inline void zlib_base::s_static_deflateTo(const v8::FunctionCallbackInfo<v8::Val
 
     ARG(obj_ptr<Stream_base>, 0);
     ARG(obj_ptr<Stream_base>, 1);
-    OPT_ARG(int32_t, 2, _DEFAULT_COMPRESSION);
+    OPT_ARG(int32_t, 2, C_DEFAULT_COMPRESSION);
 
     if (!cb.IsEmpty())
         hr = acb_deflateTo(v0, v1, v2, cb, args);
@@ -472,7 +471,7 @@ inline void zlib_base::s_static_deflateRaw(const v8::FunctionCallbackInfo<v8::Va
     ASYNC_METHOD_OVER(2, 1);
 
     ARG(obj_ptr<Buffer_base>, 0);
-    OPT_ARG(int32_t, 1, _DEFAULT_COMPRESSION);
+    OPT_ARG(int32_t, 1, C_DEFAULT_COMPRESSION);
 
     if (!cb.IsEmpty())
         hr = acb_deflateRaw(v0, v1, cb, args);
@@ -491,7 +490,7 @@ inline void zlib_base::s_static_deflateRawTo(const v8::FunctionCallbackInfo<v8::
 
     ARG(obj_ptr<Buffer_base>, 0);
     ARG(obj_ptr<Stream_base>, 1);
-    OPT_ARG(int32_t, 2, _DEFAULT_COMPRESSION);
+    OPT_ARG(int32_t, 2, C_DEFAULT_COMPRESSION);
 
     if (!cb.IsEmpty())
         hr = acb_deflateRawTo(v0, v1, v2, cb, args);
@@ -502,7 +501,7 @@ inline void zlib_base::s_static_deflateRawTo(const v8::FunctionCallbackInfo<v8::
 
     ARG(obj_ptr<Stream_base>, 0);
     ARG(obj_ptr<Stream_base>, 1);
-    OPT_ARG(int32_t, 2, _DEFAULT_COMPRESSION);
+    OPT_ARG(int32_t, 2, C_DEFAULT_COMPRESSION);
 
     if (!cb.IsEmpty())
         hr = acb_deflateRawTo(v0, v1, v2, cb, args);
@@ -562,5 +561,3 @@ inline void zlib_base::s_static_inflateRawTo(const v8::FunctionCallbackInfo<v8::
     METHOD_VOID();
 }
 }
-
-#endif

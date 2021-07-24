@@ -84,6 +84,11 @@ result_t object_base::off(v8::Local<v8::Object> map, v8::Local<v8::Object>& retV
     return JSTrigger(this).off(map, retVal);
 }
 
+result_t object_base::removeAllListeners(exlib::string ev, v8::Local<v8::Object>& retVal)
+{
+    return JSTrigger(this).removeAllListeners(ev, retVal);
+}
+
 result_t object_base::removeAllListeners(v8::Local<v8::Array> evs, v8::Local<v8::Object>& retVal)
 {
     return JSTrigger(this).removeAllListeners(evs, retVal);
@@ -125,7 +130,7 @@ result_t object_base::getListener(exlib::string ev, v8::Local<v8::Function> func
     if (r->Length() == 0)
         return CALL_RETURN_NULL;
 
-    func = v8::Local<v8::Function>::Cast(r->Get(0));
+    func = v8::Local<v8::Function>::Cast(JSValue(r->Get(e.context, 0)));
     return 0;
 }
 
@@ -180,7 +185,7 @@ result_t object_base::_emit(exlib::string ev, Variant* args, int32_t argCount)
 {
     Isolate* isolate = get_holder();
     if (isolate)
-        requestIsolateRun(isolate, jsTrigger::jsEmit, new jsTrigger(this, ev, args, argCount));
+        syncCall(isolate, jsTrigger::jsEmit, new jsTrigger(this, ev, args, argCount));
 
     return 0;
 }

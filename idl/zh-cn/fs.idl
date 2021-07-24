@@ -10,6 +10,7 @@
  - 运行 `fs.watch(filename)` 会返回一个继承自 EventEmitter 的 watcher, 它支持 'change', 'changeonly', 'renameonly' 三个事件
  - `fs.watchFile(target)` 和 `fs.unwatchFile(target)` 依然可以成对使用
  - `fs.watchFile(target)` 会返回一个继承自 EventEmitter 的 StatsWatcher 对象, 调用 `fs.unwatchFile(target)` 等价于调用 `StatsWatcher.close()`.
+ - 因为 uv 在 Linux 上的实现, `fs.watch` 的 `recursive` 选项仅在 win32/darwin 被稳定支持. 你依然可以尝试在 Linux 中尝试使用 `fs.watch('/path/to', { recursive: true }, handler)`, 但可能会发现 `handler` 被回调的时机与你预期的有差异
  */
 module fs
 {
@@ -23,7 +24,7 @@ module fs
     const SEEK_END = 2;
 
     /*! fs模块的常量对象 */
-    static readonly Object constants;
+    static fs_constants new constants();
 
     /*! @brief 查询指定的文件或目录是否存在
      @param path 指定要查询的路径
@@ -50,9 +51,23 @@ module fs
 
     /*! @brief 创建一个目录
      @param path 指定要创建的目录名
-     @param mode 指定文件权限，Windows 忽略此参数
+     @param mode 指定文件权限，Windows 忽略此参数，默认值: 0777
      */
     static mkdir(String path, Integer mode = 0777) async;
+
+    /*! @brief 创建一个目录
+
+     创建参数可以包含以下值：
+     ```JavaScript
+     {
+         recursive: false, // 指定是否父目录不存在是是否自动创建，默认值: false
+         mode: 0777 // 指定文件权限，Windows 忽略此参数，默认值: 0777
+     }
+     ```
+     @param path 指定要创建的目录名
+     @param opt 指定创建参数
+     */
+    static mkdir(String path, Object opt) async;
 
     /*! @brief 删除一个目录
      @param path 指定要删除的目录名
@@ -65,11 +80,18 @@ module fs
      */
     static rename(String from, String to) async;
 
-    /*! @brief 复制一个文件
-     @param from 指定更名的文件
-     @param to 指定要修改的新文件名
+    /*! @brief 将 src 拷贝到 dest。 默认情况下，如果 dest 已经存在，则覆盖它。
+
+     mode 是一个可选的整数，指定拷贝操作的行为。 可以创建由两个或更多个值按位或组成的掩码（比如 fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE）。
+     - fs.constants.COPYFILE_EXCL - 如果 dest 已存在，则拷贝操作将失败。
+     - fs.constants.COPYFILE_FICLONE - 拷贝操作将尝试创建写时拷贝（copy-on-write）链接。如果平台不支持写时拷贝，则使用后备的拷贝机制。
+     - fs.constants.COPYFILE_FICLONE_FORCE - 拷贝操作将尝试创建写时拷贝链接。如果平台不支持写时拷贝，则拷贝操作将失败。
+
+     @param from 指定要拷贝的源文件名
+     @param to 指定要拷贝的目标文件名
+     @param mode 指定拷贝操作的修饰符，缺省为 0
      */
-    static copy(String from, String to) async;
+    static copyFile(String from, String to, Integer mode = 0) async;
 
     /*! @brief 设置指定文件的访问权限，Windows 不支持此方法
      @param path 指定操作的文件

@@ -256,7 +256,7 @@ static result_t service_worker(Service* srv)
     v = srv->GetPrivate("worker");
     if (!v.IsEmpty()) {
         func = v8::Local<v8::Function>::Cast(v);
-        func->Call(srv->wrap(), 0, &v);
+        func->Call(func->CreationContext(), srv->wrap(), 0, &v);
     }
 
     ReportStatusToSCMgr(SERVICE_STOPPED, NO_ERROR, 0);
@@ -269,7 +269,7 @@ static void WINAPI service_main(DWORD dwArgc, LPWSTR* lpszArgv)
     s_hSStat = RegisterServiceCtrlHandlerW(s_dispatchTable[0].lpServiceName, service_ctrl);
     if (s_hSStat) {
         Service* srv = s_srv;
-        requestIsolateRun(s_isolate, service_worker, srv);
+        syncCall(s_isolate, service_worker, srv);
         ReportStatusToSCMgr(SERVICE_RUNNING, NO_ERROR, 0);
     }
 }

@@ -30,6 +30,12 @@ interface HttpServer : TcpServer
    */
     HttpServer(String addr, Integer port, Handler hdlr);
 
+    /*! @brief HttpServer 构造函数
+    @param addr 指定 http 服务器侦听地址，为 "" 则在本机所有地址侦听
+    @param hdlr http 内置消息处理器，处理函数，链式处理数组，路由对象，详见 mq.Handler
+   */
+    HttpServer(String addr, Handler hdlr);
+
     /*! @brief 允许跨域请求
      @param allowHeaders 指定接受的 http 头字段
      */
@@ -40,6 +46,9 @@ interface HttpServer : TcpServer
 
     /*! @brief 查询和设置 body 最大尺寸，以 MB 为单位，缺省为 64 */
     Integer maxBodySize;
+
+    /*! @brief 自动解压缩功能开关，默认关闭 */
+    Boolean enableEncoding;
 
     /*! @brief 查询和设置服务器名称，缺省为：fibjs/0.x.0 */
     String serverName;

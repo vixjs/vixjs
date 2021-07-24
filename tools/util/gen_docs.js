@@ -88,7 +88,7 @@ module.exports = function (defs, docsFolder) {
 
             t = t.replace(re, function (u) {
                 urls.push(u);
-                return `[u_r_l::${urls.length-1}]`;
+                return `[u_r_l::${urls.length - 1}]`;
             });
 
             t = t.replace(/(\w+)(\.(\w+))?/g, function (k, k1, k2, k3) {
@@ -201,6 +201,7 @@ module.exports = function (defs, docsFolder) {
     function gen_svg() {
         function get_node(def, me, simple) {
             var txts = [];
+            var lines = [];
 
             function member_output(name, test) {
                 var first = true;
@@ -210,29 +211,29 @@ module.exports = function (defs, docsFolder) {
                     if (test(m, def.declare.name)) {
                         if (first) {
                             first = false;
+                            txts.push(lines.join(';'));
+                            lines = [];
                             txts.push('|');
                         }
 
                         if (last_member !== m.name) {
                             last_member = m.name;
-                            if (m.name == def.declare.name)
-                                txts.push('new ' + m.name + '()\\l');
-                            else if (m.memType == 'operator')
-                                txts.push('operator' + m.name + '\\l');
+                            if (m.name == def.declare.name) {
+                                if (m.memType == 'method')
+                                    lines.push('new ' + m.name + '()');
+                                else
+                                    lines.push(m.name);
+                            } else if (m.memType == 'operator')
+                                lines.push('operator' + m.name.replace(/\[|\]/g, s => `\\${s}`));
                             else
-                                txts.push(m.name + (m.memType == 'method' ? '()' : '') + '\\l');
+                                lines.push(m.symbol + m.name + (m.memType == 'method' ? '()' : ''));
                         }
                     }
                 });
             }
 
-            txts.push("    " + def.declare.name);
-            txts.push(' [tooltip="' + def.declare.name + '"' + (me ? ', fillcolor="lightgray"' : '') + ', ');
-            if (!me)
-                txts.push('URL="' + def.declare.name + '.md", ');
-            else
-                txts.push('id="me", ');
-            txts.push('label="{');
+            txts.push("[");
+            txts.push(me ? '<this>' : '<class>');
             txts.push(def.declare.name);
 
             if (!simple) {
@@ -240,8 +241,8 @@ module.exports = function (defs, docsFolder) {
                     return m.memType == 'method' && m.name == n;
                 });
 
-                member_output('下标操作', function (m) {
-                    return m.memType == 'operator';
+                member_output('操作符', function (m) {
+                    return m.memType == 'operator' || m.symbol;
                 });
 
                 member_output('对象', function (m) {
@@ -249,11 +250,11 @@ module.exports = function (defs, docsFolder) {
                 });
 
                 member_output('静态函数', function (m, n) {
-                    return m.memType == 'method' && m.name !== n && m.static;
+                    return m.memType == 'method' && m.name !== n && m.static && !m.symbol;
                 });
 
                 member_output('静态属性', function (m) {
-                    return m.memType == 'prop' && m.static;
+                    return m.memType == 'prop' && m.static && !m.symbol;
                 });
 
                 member_output('常量', function (m) {
@@ -261,25 +262,26 @@ module.exports = function (defs, docsFolder) {
                 });
 
                 member_output('成员属性', function (m) {
-                    return m.memType == 'prop' && !m.static;
+                    return m.memType == 'prop' && !m.static && !m.symbol;
                 });
 
                 member_output('成员函数', function (m, n) {
-                    return m.memType == 'method' && m.name !== n && !m.static;
+                    return m.memType == 'method' && m.name !== n && !m.static && !m.symbol;
                 });
+
+                txts.push(lines.join(';'));
             }
 
-            txts.push('}"];');
+            txts.push(']');
 
             return txts.join('');
-
         }
 
         function get_inherits(def, nodes, arrows) {
             if (def.inherits)
                 def.inherits.forEach(i => {
                     nodes.push(get_node(defs[i], false, true));
-                    arrows.push("    " + def.declare.name + " -> " + i + ' [dir=back];');
+                    arrows.push(`[${def.declare.name}] <:- [${i}]`);
                     get_inherits(defs[i], nodes, arrows);
                 });
         }
@@ -294,14 +296,20 @@ module.exports = function (defs, docsFolder) {
                 n1 = n;
                 n = defs[n1.declare.extend];
                 nodes.unshift(get_node(n));
-                arrows.unshift("    " + n.declare.name + " -> " + n1.declare.name + ' [dir=back];');
+                arrows.unshift(`[${n.declare.name}] <:- [${n1.declare.name}]`);
             }
 
             nodes.push(get_node(def, true));
             get_inherits(def, nodes, arrows);
 
-            return 'digraph {\n    node [fontname="Helvetica,sans-Serif", fontsize=10, shape="record", style="filled", fillcolor="white"];\n\n' +
-                nodes.join('\n') + '\n\n' + arrows.join('\n') + '\n}';
+            return `#lineWidth: 1.5
+#font: Helvetica,sans-Serif
+#fontSize: 10
+#leading: 1.6
+#.this: fill=lightgray
+#.class: fill=white
+
+` + nodes.join('\n') + '\n\n' + arrows.join('\n');
         }
 
         for (var m in defs) {

@@ -88,6 +88,7 @@ result_t SandBox::resolvePackage(v8::Local<v8::Object> mods, exlib::string& fnam
     obj_ptr<Buffer_base>& data, v8::Local<v8::Value>* retVal)
 {
     Isolate* isolate = holder();
+    v8::Local<v8::Context> context = isolate->context();
     exlib::string fname1;
     result_t hr;
     v8::Local<v8::Value> v;
@@ -109,14 +110,14 @@ result_t SandBox::resolvePackage(v8::Local<v8::Object> mods, exlib::string& fnam
         return CHECK_ERROR(Runtime::setError("SandBox: Invalid package.json"));
 
     v8::Local<v8::Object> o = v8::Local<v8::Object>::Cast(v);
-    JSValue main = o->Get(isolate->NewString("main", 4));
+    JSValue main = o->Get(context, isolate->NewString("main", 4));
     if (IsEmpty(main))
         return CALL_E_FILE_NOT_FOUND;
 
     if (!main->IsString() && !main->IsStringObject())
         return CHECK_ERROR(Runtime::setError("SandBox: Invalid package.json"));
 
-    resolvePath(fname, ToCString(v8::String::Utf8Value(isolate->m_isolate, main)));
+    resolvePath(fname, isolate->toString(main));
     path_base::normalize(fname, fname);
 
     hr = resolveFile(mods, fname, data, retVal);
@@ -208,11 +209,11 @@ result_t SandBox::setModuleCompiler(exlib::string extname, v8::Local<v8::Functio
 result_t SandBox::custom_resolveId(exlib::string& id, v8::Local<v8::Value>& retVal)
 {
     Isolate* isolate = holder();
-    v8::Local<v8::Value> func = GetPrivate("require");
+    v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(GetPrivate("require"));
 
     if (!func->IsUndefined()) {
         v8::Local<v8::Value> arg = isolate->NewString(id);
-        retVal = v8::Local<v8::Function>::Cast(func)->Call(wrap(), 1, &arg);
+        func->Call(func->CreationContext(), wrap(), 1, &arg).ToLocal(&retVal);
         if (retVal.IsEmpty())
             return CALL_E_JAVASCRIPT;
 
@@ -263,9 +264,13 @@ result_t SandBox::resolveModule(exlib::string base, exlib::string& id, obj_ptr<B
             exlib::string fname1 = fname;
             int32_t sz = (int32_t)fname1.length();
             const char* buf = fname1.c_str();
+            char* _fname = NULL;
             for (int32_t i = 0; i < sz; i++)
-                if (buf[i] == PATH_SLASH)
-                    fname[i] = '/';
+                if (buf[i] == PATH_SLASH) {
+                    if (!_fname)
+                        _fname = fname.c_buffer();
+                    _fname[i] = '/';
+                }
         }
 #endif
 

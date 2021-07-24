@@ -61,7 +61,7 @@ public:
         m_strBuf = m_strCommand;
         m_strBuf.resize(sz + sz1 + 2 + m_body.length());
 
-        pBuf = &m_strBuf[sz];
+        pBuf = m_strBuf.c_buffer() + sz;
         *pBuf++ = '\r';
         *pBuf++ = '\n';
 
@@ -102,6 +102,26 @@ public:
     int32_t m_nStatus;
     bool m_headerOnly;
 };
+
+result_t HttpMessage::get_data(v8::Local<v8::Value>& retVal)
+{
+    exlib::string strType;
+
+    if (firstHeader("Content-Type", strType) == CALL_RETURN_NULL)
+        return Message::get_data(retVal);
+
+    size_t pos = strType.find(';');
+    if (pos != exlib::string::npos)
+        strType = strType.substr(0, pos);
+
+    if (strType == "application/json")
+        return Message::json(retVal);
+
+    if (strType == "application/msgpack")
+        return Message::pack(retVal);
+
+    return Message::get_data(retVal);
+}
 
 result_t HttpMessage::json(v8::Local<v8::Value> data, v8::Local<v8::Value>& retVal)
 {
@@ -196,7 +216,7 @@ result_t HttpMessage::readFrom(Stream_base* stm, AsyncEvent* ac)
 
                     if ((m_contentLength < 0)
                         || (m_pThis->m_maxBodySize >= 0
-                            && m_contentLength > m_pThis->m_maxBodySize * 1024 * 1024))
+                            && m_contentLength > (int64_t)m_pThis->m_maxBodySize * 1024 * 1024))
                         return CHECK_ERROR(Runtime::setError("HttpMessage: body is too huge."));
                 } else if (!qstricmp(m_strLine.c_str(),
                                "transfer-encoding:", 18)) {
@@ -273,7 +293,7 @@ result_t HttpMessage::readFrom(Stream_base* stm, AsyncEvent* ac)
 
             if (sz) {
                 if (m_pThis->m_maxBodySize >= 0
-                    && sz + m_contentLength > m_pThis->m_maxBodySize * 1024 * 1024)
+                    && sz + m_contentLength > (int64_t)m_pThis->m_maxBodySize * 1024 * 1024)
                     return CHECK_ERROR(Runtime::setError("HttpMessage: body is too huge."));
                 return m_stm->copyTo(m_body, sz, m_copySize, next(chunk_body_end));
             }

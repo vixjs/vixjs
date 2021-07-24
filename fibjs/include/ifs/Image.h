@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _Image_base_H_
-#define _Image_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -428,7 +427,7 @@ inline void Image_base::s_getData(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ASYNC_METHOD_OVER(2, 0);
 
-    OPT_ARG(int32_t, 0, gd_base::_PNG);
+    OPT_ARG(int32_t, 0, gd_base::C_PNG);
     OPT_ARG(int32_t, 1, 85);
 
     if (!cb.IsEmpty())
@@ -448,7 +447,7 @@ inline void Image_base::s_save(const v8::FunctionCallbackInfo<v8::Value>& args)
     ASYNC_METHOD_OVER(3, 1);
 
     ARG(obj_ptr<Stream_base>, 0);
-    OPT_ARG(int32_t, 1, gd_base::_PNG);
+    OPT_ARG(int32_t, 1, gd_base::C_PNG);
     OPT_ARG(int32_t, 2, 85);
 
     if (!cb.IsEmpty())
@@ -459,7 +458,7 @@ inline void Image_base::s_save(const v8::FunctionCallbackInfo<v8::Value>& args)
     ASYNC_METHOD_OVER(3, 1);
 
     ARG(exlib::string, 0);
-    OPT_ARG(int32_t, 1, gd_base::_PNG);
+    OPT_ARG(int32_t, 1, gd_base::C_PNG);
     OPT_ARG(int32_t, 2, 85);
 
     if (!cb.IsEmpty())
@@ -979,7 +978,7 @@ inline void Image_base::s_filledArc(const v8::FunctionCallbackInfo<v8::Value>& a
     ARG(int32_t, 4);
     ARG(int32_t, 5);
     ARG(int32_t, 6);
-    OPT_ARG(int32_t, 7, gd_base::_ARC);
+    OPT_ARG(int32_t, 7, gd_base::C_ARC);
 
     hr = pInst->filledArc(v0, v1, v2, v3, v4, v5, v6, v7);
 
@@ -1110,7 +1109,7 @@ inline void Image_base::s_flip(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     ASYNC_METHOD_OVER(1, 0);
 
-    OPT_ARG(int32_t, 0, gd_base::_HORIZONTAL);
+    OPT_ARG(int32_t, 0, gd_base::C_HORIZONTAL);
 
     if (!cb.IsEmpty())
         hr = pInst->acb_flip(v0, cb, args);
@@ -1146,7 +1145,7 @@ inline void Image_base::s_convert(const v8::FunctionCallbackInfo<v8::Value>& arg
 
     ASYNC_METHOD_OVER(1, 0);
 
-    OPT_ARG(int32_t, 0, gd_base::_TRUECOLOR);
+    OPT_ARG(int32_t, 0, gd_base::C_TRUECOLOR);
 
     if (!cb.IsEmpty())
         hr = pInst->acb_convert(v0, cb, args);
@@ -1371,5 +1370,3 @@ inline void Image_base::s_gaussianBlur(const v8::FunctionCallbackInfo<v8::Value>
     METHOD_VOID();
 }
 }
-
-#endif

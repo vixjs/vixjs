@@ -5,13 +5,13 @@
  * @modify date 2020-08-24 17:49:40
  * @desc File Range R/W strem
  */
+
+#pragma once
+
 #include "ifs/fs.h"
 #include "ifs/io.h"
 #include "ifs/RangeStream.h"
 #include "Stat.h"
-
-#ifndef IORANGESTREAM_H_
-#define IORANGESTREAM_H_
 
 namespace fibjs {
 
@@ -35,7 +35,7 @@ public:
 
 public:
     // SeekableStream_base
-    virtual result_t seek(int64_t offset, int32_t whence = fs_base::_SEEK_SET);
+    virtual result_t seek(int64_t offset, int32_t whence);
     virtual result_t tell(int64_t& retVal);
     virtual result_t rewind();
     virtual result_t size(int64_t& retVal);
@@ -55,7 +55,4 @@ private:
     int64_t real_pos; // real position
     int64_t e_pos; // end position
 };
-
 }
-
-#endif // IORANGESTREAM_H_

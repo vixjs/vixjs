@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _zip_base_H_
-#define _zip_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -25,8 +24,8 @@ class zip_base : public object_base {
 
 public:
     enum {
-        _ZIP_STORED = 0,
-        _ZIP_DEFLATED = 1
+        C_ZIP_STORED = 0,
+        C_ZIP_DEFLATED = 1
     };
 
 public:
@@ -74,8 +73,8 @@ inline ClassInfo& zip_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "ZIP_STORED", _ZIP_STORED },
-        { "ZIP_DEFLATED", _ZIP_DEFLATED }
+        { "ZIP_STORED", C_ZIP_STORED },
+        { "ZIP_DEFLATED", C_ZIP_DEFLATED }
     };
 
     static ClassData s_cd = {
@@ -118,7 +117,7 @@ inline void zip_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& a
 
     ARG(exlib::string, 0);
     OPT_ARG(exlib::string, 1, "r");
-    OPT_ARG(int32_t, 2, _ZIP_DEFLATED);
+    OPT_ARG(int32_t, 2, C_ZIP_DEFLATED);
 
     if (!cb.IsEmpty())
         hr = acb_open(v0, v1, v2, cb, args);
@@ -129,7 +128,7 @@ inline void zip_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& a
 
     ARG(obj_ptr<Buffer_base>, 0);
     OPT_ARG(exlib::string, 1, "r");
-    OPT_ARG(int32_t, 2, _ZIP_DEFLATED);
+    OPT_ARG(int32_t, 2, C_ZIP_DEFLATED);
 
     if (!cb.IsEmpty())
         hr = acb_open(v0, v1, v2, cb, args);
@@ -140,7 +139,7 @@ inline void zip_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& a
 
     ARG(obj_ptr<SeekableStream_base>, 0);
     OPT_ARG(exlib::string, 1, "r");
-    OPT_ARG(int32_t, 2, _ZIP_DEFLATED);
+    OPT_ARG(int32_t, 2, C_ZIP_DEFLATED);
 
     if (!cb.IsEmpty())
         hr = acb_open(v0, v1, v2, cb, args);
@@ -150,5 +149,3 @@ inline void zip_base::s_static_open(const v8::FunctionCallbackInfo<v8::Value>& a
     METHOD_RETURN();
 }
 }
-
-#endif

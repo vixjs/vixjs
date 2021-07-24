@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _ws_base_H_
-#define _ws_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -25,16 +24,16 @@ class ws_base : public object_base {
 
 public:
     enum {
-        _CONTINUE = 0,
-        _TEXT = 1,
-        _BINARY = 2,
-        _CLOSE = 8,
-        _PING = 9,
-        _PONG = 10,
-        _CONNECTING = 0,
-        _OPEN = 1,
-        _CLOSING = 2,
-        _CLOSED = 3
+        C_CONTINUE = 0,
+        C_TEXT = 1,
+        C_BINARY = 2,
+        C_CLOSE = 8,
+        C_PING = 9,
+        C_PONG = 10,
+        C_CONNECTING = 0,
+        C_OPEN = 1,
+        C_CLOSING = 2,
+        C_CLOSED = 3
     };
 
 public:
@@ -75,16 +74,16 @@ inline ClassInfo& ws_base::class_info()
     };
 
     static ClassData::ClassConst s_const[] = {
-        { "CONTINUE", _CONTINUE },
-        { "TEXT", _TEXT },
-        { "BINARY", _BINARY },
-        { "CLOSE", _CLOSE },
-        { "PING", _PING },
-        { "PONG", _PONG },
-        { "CONNECTING", _CONNECTING },
-        { "OPEN", _OPEN },
-        { "CLOSING", _CLOSING },
-        { "CLOSED", _CLOSED }
+        { "CONTINUE", C_CONTINUE },
+        { "TEXT", C_TEXT },
+        { "BINARY", C_BINARY },
+        { "CLOSE", C_CLOSE },
+        { "PING", C_PING },
+        { "PONG", C_PONG },
+        { "CONNECTING", C_CONNECTING },
+        { "OPEN", C_OPEN },
+        { "CLOSING", C_CLOSING },
+        { "CLOSED", C_CLOSED }
     };
 
     static ClassData s_cd = {
@@ -120,5 +119,3 @@ inline void ws_base::s_static_upgrade(const v8::FunctionCallbackInfo<v8::Value>&
     METHOD_RETURN();
 }
 }
-
-#endif

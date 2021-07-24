@@ -6,13 +6,12 @@
  */
 #ifdef _WIN32
 
+#pragma once
+
 #include "ifs/WebView.h"
 #include <comdef.h>
 #include <Exdisp.h>
 #include <mshtmhst.h>
-
-#ifndef WEBVIEW_WIN32_H_
-#define WEBVIEW_WIN32_H_
 
 namespace fibjs {
 
@@ -58,6 +57,7 @@ public:
     virtual result_t executeDevToolsMethod(exlib::string method, v8::Local<v8::Object> params, Variant& retVal, AsyncEvent* ac);
     virtual result_t close(AsyncEvent* ac);
     virtual result_t postMessage(exlib::string msg, AsyncEvent* ac);
+    virtual result_t get_type(exlib::string& retVal);
     virtual result_t get_dev(v8::Local<v8::Value>& retVal);
 
 private:
@@ -66,10 +66,13 @@ private:
 public:
     EVENT_FUNC(open);
     EVENT_FUNC(load);
+    EVENT_FUNC(address);
+    EVENT_FUNC(title);
     EVENT_FUNC(move);
     EVENT_FUNC(resize);
     EVENT_FUNC(closed);
     EVENT_FUNC(message);
+    EVENT_FUNC(download);
 
 private:
     void Navigate(exlib::string szUrl);
@@ -224,5 +227,4 @@ protected:
 };
 
 } /* namespace fibjs */
-#endif /* WEBVIEW_WIN32_H_ */
 #endif /* _WIN32 */

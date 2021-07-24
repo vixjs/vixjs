@@ -7,6 +7,11 @@ interface DbConnection : object
     /*! @brief 关闭当前数据库连接 */
     close() async;
 
+    /*! @brief 选择当前数据库连接的缺省数据库
+	 @param dbName 指定数据库名
+	 */
+    use(String dbName) async;
+
     /*! @brief 在当前数据库连接上启动一个事务
     
      @param point 指定事务的名称，缺省不指定
@@ -47,6 +52,13 @@ interface DbConnection : object
      @return 返回事务是否提交，正常 commit 时返回 true, rollback 时返回 false，如果事务出错则抛出错误
     */
     Boolean trans(String point, Function func);
+
+    /*! @brief 执行一个 sql 命令，并返回执行结果
+
+     @param sql 字符串
+     @return 返回包含结果记录的数组，如果请求是 UPDATE 或者 INSERT，返回结果还会包含 affected 和 insertId，mssql 不支持 insertId。
+     */
+    NArray execute(String sql) async;
 
     /*! @brief 执行一个 sql 命令，并返回执行结果，可根据参数格式化字符串
 

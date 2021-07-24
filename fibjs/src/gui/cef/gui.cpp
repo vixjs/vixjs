@@ -25,21 +25,36 @@ namespace fibjs {
 
 DECLARE_MODULE(gui);
 
-#ifdef WIN32
-#define os_dirname _dirname_win32
-#define os_normalize _normalize_win32
-#else
-#define os_dirname _dirname
-#define os_normalize _normalize
-#endif
-
 #if defined(Darwin)
-const char* s_cef_sdk = "../Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework";
+const char* s_cef_sdk = "Chromium Embedded Framework";
 #elif defined(Windows)
 const char* s_cef_sdk = "libcef.dll";
 #else
 const char* s_cef_sdk = "libcef.so";
 #endif
+
+exlib::string GuiApp::get_path(const char* p)
+{
+    exlib::string str_res;
+    exlib::string str_path;
+
+    str_path = m_cef_path;
+    str_path.append(1, PATH_SLASH);
+    str_path.append(p);
+
+    os_normalize(str_path, str_res);
+
+    return str_res;
+}
+
+bool _exists(exlib::string path)
+{
+#ifdef _WIN32
+    return _waccess(UTF8_W(path), 0) == 0;
+#else
+    return ::access(path.c_str(), F_OK) == 0;
+#endif
+}
 
 void GuiApp::load_cef()
 {
@@ -48,22 +63,14 @@ void GuiApp::load_cef()
     if (!g_cefprocess)
         m_gui.wait();
 
-    if (m_cef_path.empty()) {
-        exlib::string str_exe;
+    exlib::string str_exe;
+    process_base::get_execPath(str_exe);
 
-        process_base::get_execPath(str_exe);
+    if (m_cef_path.empty())
         os_dirname(str_exe, m_cef_path);
-    }
 
-    str_path = m_cef_path;
-
-    str_path.append(1, PATH_SLASH);
-    str_path.append(s_cef_sdk);
-
-    exlib::string str_cef;
-    os_normalize(str_path, str_cef);
-
-    fs_base::cc_exists(str_cef, m_has_cef);
+    exlib::string str_cef = get_path(s_cef_sdk);
+    m_has_cef = _exists(str_cef);
     if (!m_has_cef) {
         m_gui_ready.set();
         run_os_gui();
@@ -79,13 +86,24 @@ void GuiApp::load_cef()
 
     if (!cef_load_library(str_cef.c_str()))
         _exit(-1);
+
+    CefString(&m_settings.framework_dir_path) = m_cef_path;
+    CefString(&m_settings.browser_subprocess_path) = str_exe;
+
+#ifndef Darwin
+    CefString(&m_settings.locales_dir_path) = get_path("locales");
+#else
+    CefString(&m_settings.resources_dir_path) = get_path("Resources");
+#endif
+
+    CefEnableHighDPISupport();
 }
 
 GuiApp* g_app;
 
 void MacRunMessageLoop(const CefMainArgs& args, const CefSettings& settings, CefRefPtr<CefApp> application);
 
-void GuiApp::runGuiThread(int argc, char* argv[])
+void GuiApp::run_gui(int argc, char* argv[])
 {
     AddRef();
 
@@ -99,6 +117,7 @@ void GuiApp::runGuiThread(int argc, char* argv[])
     if (g_cefprocess)
         _exit(CefExecuteProcess(m_args, this, NULL));
 
+    m_settings.no_sandbox = true;
     if (m_opt) {
         Variant v;
 
@@ -111,22 +130,11 @@ void GuiApp::runGuiThread(int argc, char* argv[])
         if (m_opt->get("menu", v) == 0)
             m_bMenu = v.boolVal();
 
-        if (!m_bHeadless && m_opt->get("headless", v) == 0)
+        if (m_opt->get("headless", v) == 0)
             m_bHeadless = v.boolVal();
 
         if (m_opt->get("cache_path", v) == 0)
             CefString(&m_settings.cache_path) = v.string().c_str();
-
-#ifndef Darwin
-        if (m_opt->get("locales_path", v) == 0)
-            CefString(&m_settings.locales_dir_path) = v.string().c_str();
-        else {
-            exlib::string str_locales;
-
-            os_normalize(m_cef_path + "/locales", str_locales);
-            CefString(&m_settings.locales_dir_path) = str_locales.c_str();
-        }
-#endif
     }
 
 #ifdef Darwin
@@ -147,10 +155,10 @@ void GuiApp::runGuiThread(int argc, char* argv[])
     th.suspend();
 }
 
-void runGuiThread(int argc, char* argv[])
+void run_gui(int argc, char* argv[])
 {
     g_app = new GuiApp(argc, argv);
-    g_app->runGuiThread(argc, argv);
+    g_app->run_gui(argc, argv);
 }
 
 static result_t async_flush(int32_t w)
@@ -211,16 +219,61 @@ static result_t async_open(obj_ptr<CefWebView> w)
 
 result_t GuiApp::open(exlib::string url, v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal)
 {
+    Isolate* isolate = Isolate::current();
+
     m_gui.set();
     m_gui_ready.wait();
 
-    if (!m_has_cef)
+    exlib::string _type("cef");
+
+    GetConfigValue(isolate->m_isolate, opt, "type", _type, true);
+    if (_type == "native")
         return os_gui_open(url, opt, retVal);
+
+    if (_type != "cef")
+        return CHECK_ERROR(Runtime::setError("gui: invalid type:" + _type));
+
+    if (!m_has_cef)
+        return CHECK_ERROR(Runtime::setError("gui: cef runtime not found."));
+
+    exlib::string _proxy_mode;
+    exlib::string _proxy_server;
+
+    v8::Local<v8::Object> _proxy;
+    result_t hr = GetConfigValue(isolate->m_isolate, opt, "proxy", _proxy, true);
+    if (hr != CALL_E_PARAMNOTOPTIONAL) {
+        if (hr < 0)
+            return hr;
+
+        hr = GetConfigValue(isolate->m_isolate, _proxy, "mode", _proxy_mode, true);
+        if (hr == CALL_E_PARAMNOTOPTIONAL)
+            _proxy_mode = "fixed_servers";
+        else if (hr < 0)
+            return hr;
+
+        hr = GetConfigValue(isolate->m_isolate, _proxy, "server", _proxy_server, true);
+        if (hr < 0 && hr != CALL_E_PARAMNOTOPTIONAL)
+            return hr;
+    } else {
+        _proxy_mode = m_proxy_mode;
+        _proxy_server = m_proxy_server;
+    }
+
+    CefRefPtr<CefValue> proxy_value;
+    if (!_proxy_mode.empty()) {
+        CefRefPtr<CefDictionaryValue> dict = CefDictionaryValue::Create();
+
+        dict->SetString("mode", _proxy_mode.c_str());
+        dict->SetString("server", _proxy_server.c_str());
+
+        proxy_value = CefValue::Create();
+        proxy_value->SetDictionary(dict);
+    }
 
     obj_ptr<NObject> o = new NObject();
     o->add(opt);
 
-    obj_ptr<CefWebView> w = new CefWebView(url, o);
+    obj_ptr<CefWebView> w = new CefWebView(url, o, proxy_value);
     w->wrap();
 
     asyncCall(async_open, w, CALL_E_GUICALL);
@@ -234,9 +287,15 @@ result_t gui_base::open(exlib::string url, v8::Local<v8::Object> opt, obj_ptr<We
     return g_app->open(url, opt, retVal);
 }
 
+result_t gui_base::open(v8::Local<v8::Object> opt, obj_ptr<WebView_base>& retVal)
+{
+    return g_app->open("about:blank", opt, retVal);
+}
+
 result_t GuiApp::config(v8::Local<v8::Object> opt)
 {
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
 
     m_opt = new NObject();
     m_opt->add(opt);
@@ -244,10 +303,14 @@ result_t GuiApp::config(v8::Local<v8::Object> opt)
     Variant v;
     result_t hr;
 
-#ifndef Darwin
     if (m_opt->get("cef_path", v) == 0)
         m_cef_path = v.string();
-#endif
+
+    if (m_opt->get("download_path", v) == 0)
+        m_download_path = v.string();
+
+    if (m_opt->get("download_dialog", v) == 0)
+        m_download_dialog = v.boolVal();
 
     v8::Local<v8::Object> o;
     hr = GetConfigValue(isolate->m_isolate, opt, "backend", o, true);
@@ -255,14 +318,14 @@ result_t GuiApp::config(v8::Local<v8::Object> opt)
         if (hr < 0)
             return hr;
 
-        JSArray ks = o->GetPropertyNames();
+        JSArray ks = o->GetPropertyNames(context);
         int32_t len = ks->Length();
         int32_t i;
 
         for (i = 0; i < len; i++) {
             std::map<exlib::string, CefRefPtr<GuiSchemeHandlerFactory>>::iterator it;
-            JSValue k = ks->Get(i);
-            exlib::string ks(ToCString(v8::String::Utf8Value(isolate->m_isolate, k)));
+            JSValue k = ks->Get(context, i);
+            exlib::string ks(isolate->toString(k));
             Url u;
             exlib::string scheme;
 
@@ -287,6 +350,22 @@ result_t GuiApp::config(v8::Local<v8::Object> opt)
         }
     }
 
+    hr = GetConfigValue(isolate->m_isolate, opt, "proxy", o, true);
+    if (hr != CALL_E_PARAMNOTOPTIONAL) {
+        if (hr < 0)
+            return hr;
+
+        hr = GetConfigValue(isolate->m_isolate, o, "mode", m_proxy_mode, true);
+        if (hr == CALL_E_PARAMNOTOPTIONAL)
+            m_proxy_mode = "fixed_servers";
+        else if (hr < 0)
+            return hr;
+
+        hr = GetConfigValue(isolate->m_isolate, o, "server", m_proxy_server, true);
+        if (hr < 0 && hr != CALL_E_PARAMNOTOPTIONAL)
+            return hr;
+    }
+
     return 0;
 }
 
@@ -294,5 +373,4 @@ result_t gui_base::config(v8::Local<v8::Object> opt)
 {
     return g_app->config(opt);
 }
-
 }

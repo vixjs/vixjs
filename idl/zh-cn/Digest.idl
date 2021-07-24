@@ -8,10 +8,23 @@ interface Digest : object
     Digest update(Buffer data);
 
     /*! @brief 计算并返回摘要
-     @param codec 指定编码格式，允许值为："buffer", "hex", "base64", "utf8", 或者系统支持的字符集
+     @param codec 指定编码格式，允许值为："buffer", "hex", "base64", "utf8", 或者 iconv 模块支持的字符集
      @return 返回指定编码的摘要表示
      */
     Value digest(String codec = "buffer");
+
+    /*! @brief 签名并返回摘要
+     @param key 签名的私钥
+     @return 返回签名后的数据
+     */
+    Buffer sign(PKey key) async;
+
+    /*! @brief 验证签名是否一致
+     @param key 验证签名的公钥
+     @param sign 指定要验证的签名
+     @return 返回验证后的结果
+     */
+    Boolean verify(PKey key, Buffer sign) async;
 
     /*! @brief 查询当前信息摘要算法的摘要字节数 */
     readonly Integer size;

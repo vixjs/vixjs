@@ -5,8 +5,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef _url_base_H_
-#define _url_base_H_
+#pragma once
 
 /**
  @author Leo Hoo <lion@9465.net>
@@ -25,6 +24,7 @@ public:
     // url_base
     static result_t format(v8::Local<v8::Object> args, exlib::string& retVal);
     static result_t parse(exlib::string url, bool parseQueryString, bool slashesDenoteHost, obj_ptr<UrlObject_base>& retVal);
+    static result_t resolve(exlib::string _from, exlib::string to, exlib::string& retVal);
 
 public:
     static void s__new(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -40,6 +40,7 @@ public:
 public:
     static void s_static_format(const v8::FunctionCallbackInfo<v8::Value>& args);
     static void s_static_parse(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 }
 
@@ -50,7 +51,8 @@ inline ClassInfo& url_base::class_info()
 {
     static ClassData::ClassMethod s_method[] = {
         { "format", s_static_format, true },
-        { "parse", s_static_parse, true }
+        { "parse", s_static_parse, true },
+        { "resolve", s_static_resolve, true }
     };
 
     static ClassData::ClassObject s_object[] = {
@@ -100,6 +102,21 @@ inline void url_base::s_static_parse(const v8::FunctionCallbackInfo<v8::Value>& 
 
     METHOD_RETURN();
 }
-}
 
-#endif
+inline void url_base::s_static_resolve(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    exlib::string vr;
+
+    METHOD_NAME("url.resolve");
+    METHOD_ENTER();
+
+    METHOD_OVER(2, 2);
+
+    ARG(exlib::string, 0);
+    ARG(exlib::string, 1);
+
+    hr = resolve(v0, v1, vr);
+
+    METHOD_RETURN();
+}
+}

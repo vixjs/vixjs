@@ -364,7 +364,7 @@ result_t XmlElement::getElementById(exlib::string id, obj_ptr<XmlElement_base>& 
     result_t hr;
 
     for (i = 0; i < sz; i++)
-        if (childs[i]->m_type == xml_base::_ELEMENT_NODE) {
+        if (childs[i]->m_type == xml_base::C_ELEMENT_NODE) {
             XmlElement* pEl = (XmlElement*)(childs[i]->m_node);
             hr = pEl->getElementByIdFromThis(id, retVal);
             if (hr != CALL_RETURN_NULL)
@@ -449,7 +449,7 @@ result_t XmlElement::toString(exlib::string& retVal)
     exlib::string tagName(m_tagName);
 
     if (!m_isXml)
-        qstrlwr(&tagName[0]);
+        qstrlwr(tagName.c_buffer());
 
     if (m_prefix.empty()) {
         if (!m_namespaceURI.empty()) {
@@ -459,7 +459,7 @@ result_t XmlElement::toString(exlib::string& retVal)
                 int32_t type;
 
                 m_parent->get_nodeType(type);
-                if (type == xml_base::_ELEMENT_NODE) {
+                if (type == xml_base::C_ELEMENT_NODE) {
                     exlib::string def_ns;
                     ((XmlElement*)m_parent->m_node)->get_defaultNamespace(def_ns);
 

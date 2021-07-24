@@ -12,15 +12,13 @@
 namespace fibjs {
 
 result_t HttpServer_base::_new(int32_t port, Handler_base* hdlr,
-    obj_ptr<HttpServer_base>& retVal,
-    v8::Local<v8::Object> This)
+    obj_ptr<HttpServer_base>& retVal, v8::Local<v8::Object> This)
 {
     return _new("", port, hdlr, retVal, This);
 }
 
 result_t HttpServer_base::_new(exlib::string addr, int32_t port, Handler_base* hdlr,
-    obj_ptr<HttpServer_base>& retVal,
-    v8::Local<v8::Object> This)
+    obj_ptr<HttpServer_base>& retVal, v8::Local<v8::Object> This)
 {
     result_t hr;
 
@@ -33,6 +31,12 @@ result_t HttpServer_base::_new(exlib::string addr, int32_t port, Handler_base* h
 
     retVal = svr;
     return 0;
+}
+
+result_t HttpServer_base::_new(exlib::string addr, Handler_base* hdlr,
+    obj_ptr<HttpServer_base>& retVal, v8::Local<v8::Object> This)
+{
+    return _new(addr, 0, hdlr, retVal, This);
 }
 
 result_t HttpServer::create(exlib::string addr, int32_t port, Handler_base* hdlr)
@@ -104,6 +108,16 @@ result_t HttpServer::get_maxBodySize(int32_t& retVal)
 result_t HttpServer::set_maxBodySize(int32_t newVal)
 {
     return m_hdlr->set_maxBodySize(newVal);
+}
+
+result_t HttpServer::get_enableEncoding(bool& retVal)
+{
+    return m_hdlr->get_enableEncoding(retVal);
+}
+
+result_t HttpServer::set_enableEncoding(bool newVal)
+{
+    return m_hdlr->set_enableEncoding(newVal);
 }
 
 result_t HttpServer::get_serverName(exlib::string& retVal)

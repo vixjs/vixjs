@@ -5,8 +5,7 @@
  *      Author: lion
  */
 
-#ifndef _PATH_UTIL_H_
-#define _PATH_UTIL_H_
+#pragma once
 
 #include "ifs/path_posix.h"
 #include "ifs/path_win32.h"
@@ -54,7 +53,8 @@ public:
         if (qisascii(c_str[0]) && c_str[1] == ':') {
             diskId = c_str[0];
             m_buf = m_disks[diskId & 0x1f];
-            m_buf[0] = c_str[0];
+            if (m_buf.length())
+                m_buf.c_buffer()[0] = c_str[0];
             c_str += 2;
         }
 
@@ -1153,6 +1153,30 @@ inline result_t _fullpath_win32(exlib::string path, exlib::string& retVal)
 #endif
 }
 
-} /* namespace fibjs */
+#ifdef _WIN32
+#define os_split_path split_path_win32
+#define os_fullpath _fullpath_win32
+#define os_normalize _normalize_win32
+#define os_basename _basename_win32
+#define os_extname _extname_win32
+#define os_parse _parse_win32
+#define os_dirname _dirname_win32
+#define os_resolve _resolve_win32
+#define os_relative _relative_win32
+#define os_fullpath _fullpath_win32
+#define os_join _join_win32
+#else
+#define os_split_path split_path
+#define os_fullpath _fullpath
+#define os_normalize _normalize
+#define os_basename _basename
+#define os_extname _extname
+#define os_parse _parse
+#define os_dirname _dirname
+#define os_resolve _resolve
+#define os_relative _relative
+#define os_fullpath _fullpath
+#define os_join _join
+#endif
 
-#endif /* _PATH_UTIL_H_ */
+} /* namespace fibjs */

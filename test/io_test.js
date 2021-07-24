@@ -6,8 +6,12 @@ const fs = require("fs");
 const path = require("path");
 const coroutine = require("coroutine");
 
-const { generateFakeMp4 } = require('./http_files/range_test/fake');
-const { assert_error_msg } = require('./_helpers/error');
+const {
+    generateFakeMp4
+} = require('./http_files/range_test/fake');
+const {
+    assert_error_msg
+} = require('./_helpers/error');
 
 const LF = `\n`
 const CRLF = `\r\n`
@@ -39,7 +43,8 @@ describe('io', () => {
         });
 
         describe('readUntil', () => {
-            ;[
+            ;
+            [
                 ['system EOL', EOL],
                 ['LF', LF],
                 ['CRLF', CRLF],
@@ -170,7 +175,7 @@ describe('io', () => {
                 // readable
                 stm.read(1);
                 // query current position
-                assert.equal(stm.tell(), 0);
+                assert.equal(stm.tell(), 1);
                 // get size of range
                 assert.equal(stm.size(), file.size());
                 // get the real stream's fd
@@ -185,22 +190,22 @@ describe('io', () => {
                 // but you cannot read from it.
                 assert_error_msg(() => {
                     stm.read(1);
-                }, `[-100026] Object closed.`)
+                }, `[20026] Object closed.`)
 
                 // nor query current positoin
                 assert_error_msg(() => {
                     stm.tell();
-                }, `[-100026] Object closed.`)
+                }, `[20026] Object closed.`)
 
                 // not allowed to get size of it.
                 assert_error_msg(() => {
                     stm.size();
-                }, `[-100026] Object closed.`)
+                }, `[20026] Object closed.`)
 
                 // not allowed to get fd of it.
                 assert_error_msg(() => {
                     stm.fd;
-                }, `[-100026] Object closed.`)
+                }, `[20026] Object closed.`)
             });
 
             describe("ALLOW: multiple range upon the same file in order", () => {
@@ -313,7 +318,8 @@ describe('io', () => {
                 assert.equal(stm.end, sz * 2);
                 stm.seek(-sz, fs.SEEK_END);
 
-                assert.equal(stm.tell(), file.tell() - BigInt(stm.begin));
+                assert.equal(stm.tell(), sz / 2);
+                assert.equal(file.tell(), 0);
 
                 stm.seek(-sz * 2 + begin, fs.SEEK_END);
                 assert.throws(() => {

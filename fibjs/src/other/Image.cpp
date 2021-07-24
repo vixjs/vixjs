@@ -340,9 +340,9 @@ result_t Image::create(int32_t width, int32_t height, int32_t color)
     if (width <= 0 || height <= 0)
         return CHECK_ERROR(CALL_E_INVALIDARG);
 
-    if (color == gd_base::_PALETTE)
+    if (color == gd_base::C_PALETTE)
         m_image = gdImageCreate(width, height);
-    else if (color == gd_base::_TRUECOLOR)
+    else if (color == gd_base::C_TRUECOLOR)
         m_image = gdImageCreateTrueColor(width, height);
     else
         return CHECK_ERROR(CALL_E_INVALIDARG);
@@ -368,30 +368,30 @@ result_t Image::load(Buffer_base* data)
     unsigned char ch2 = (unsigned char)strBuf[1];
 
     if (ch1 == 0x47 && ch2 == 0x49)
-        format = gd_base::_GIF;
+        format = gd_base::C_GIF;
     else if (ch1 == 0x89 && ch2 == 0x50)
-        format = gd_base::_PNG;
+        format = gd_base::C_PNG;
     else if (ch1 == 0xff && ch2 == 0xd8)
-        format = gd_base::_JPEG;
+        format = gd_base::C_JPEG;
     else if ((ch1 == 0x49 && ch2 == 0x49) || (ch1 == 0x4d && ch2 == 0x4d))
-        format = gd_base::_TIFF;
+        format = gd_base::C_TIFF;
     else if (ch1 == 0x42 && ch2 == 0x4d)
-        format = gd_base::_BMP;
+        format = gd_base::C_BMP;
     else if (ch1 == 0x52 && ch2 == 0x49)
-        format = gd_base::_WEBP;
+        format = gd_base::C_WEBP;
     else
         return CHECK_ERROR(CALL_E_INVALID_DATA);
 
     switch (format) {
-    case gd_base::_GIF:
+    case gd_base::C_GIF:
         m_image = gdImageCreateFromGifPtr((int32_t)strBuf.length(),
             (void*)strBuf.c_str());
         break;
-    case gd_base::_PNG:
+    case gd_base::C_PNG:
         m_image = gdImageCreateFromPngPtr((int32_t)strBuf.length(),
             (void*)strBuf.c_str());
         break;
-    case gd_base::_JPEG:
+    case gd_base::C_JPEG:
         m_image = gdImageCreateFromJpegPtr((int32_t)strBuf.length(),
             (void*)strBuf.c_str());
         if (m_image != NULL) {
@@ -412,26 +412,26 @@ result_t Image::load(Buffer_base* data)
             case 5:
                 gdImageFlipVertical(m_image);
             case 6:
-                rotate(gd_base::_RIGHT);
+                rotate(gd_base::C_RIGHT);
                 break;
             case 7:
                 gdImageFlipVertical(m_image);
             case 8:
-                rotate(gd_base::_LEFT);
+                rotate(gd_base::C_LEFT);
                 break;
             }
         }
 
         break;
-    case gd_base::_TIFF:
+    case gd_base::C_TIFF:
         m_image = gdImageCreateFromTiffPtr((int32_t)strBuf.length(),
             (void*)strBuf.c_str());
         break;
-    case gd_base::_BMP:
+    case gd_base::C_BMP:
         m_image = gdImageCreateFromBmpPtr((int32_t)strBuf.length(),
             (void*)strBuf.c_str());
         break;
-    case gd_base::_WEBP:
+    case gd_base::C_WEBP:
         m_image = gdImageCreateFromWebpPtr((int32_t)strBuf.length(),
             (void*)strBuf.c_str());
         break;
@@ -481,7 +481,7 @@ result_t Image::getData(int32_t format, int32_t quality,
     gdImagePtr nowImage = m_image;
 
     if (trans != -1) {
-        if (format != gd_base::_PNG) {
+        if (format != gd_base::C_PNG) {
             if (gdImageTrueColor(m_image))
                 nowImage = gdImageCreateTrueColor(sx, sy);
             else {
@@ -496,22 +496,22 @@ result_t Image::getData(int32_t format, int32_t quality,
     }
 
     switch (format) {
-    case gd_base::_GIF:
+    case gd_base::C_GIF:
         data = gdImageGifPtr(nowImage, &size);
         break;
-    case gd_base::_PNG:
+    case gd_base::C_PNG:
         data = gdImagePngPtr(nowImage, &size);
         break;
-    case gd_base::_JPEG:
+    case gd_base::C_JPEG:
         data = gdImageJpegPtr(nowImage, &size, quality);
         break;
-    case gd_base::_TIFF:
+    case gd_base::C_TIFF:
         data = gdImageTiffPtr(nowImage, &size);
         break;
-    case gd_base::_BMP:
+    case gd_base::C_BMP:
         data = gdImageBmpPtr(nowImage, &size, 1);
         break;
-    case gd_base::_WEBP:
+    case gd_base::C_WEBP:
         data = gdImageWebpPtrEx(nowImage, &size, quality);
         break;
     }
@@ -652,7 +652,7 @@ result_t Image::get_type(int32_t& retVal)
     if (!m_image)
         return CHECK_ERROR(CALL_E_INVALID_CALL);
 
-    retVal = gdImageTrueColor(m_image) ? gd_base::_TRUECOLOR : gd_base::_PALETTE;
+    retVal = gdImageTrueColor(m_image) ? gd_base::C_TRUECOLOR : gd_base::C_PALETTE;
     return 0;
 }
 
@@ -985,9 +985,10 @@ result_t getPoints(v8::Local<v8::Array>& points, std::vector<gdPoint>& pts)
     pts.resize(len);
 
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
 
     for (i = 0; i < len; i++) {
-        JSValue v = points->Get(i);
+        JSValue v = points->Get(context, i);
 
         if (!v->IsArray())
             return CHECK_ERROR(CALL_E_INVALIDARG);
@@ -997,8 +998,8 @@ result_t getPoints(v8::Local<v8::Array>& points, std::vector<gdPoint>& pts)
         if (pt->Length() != 2)
             return CHECK_ERROR(CALL_E_INVALIDARG);
 
-        pts[i].x = isolate->toInt32Value(JSValue(pt->Get(0)));
-        pts[i].y = isolate->toInt32Value(JSValue(pt->Get(1)));
+        pts[i].x = isolate->toInt32Value(JSValue(pt->Get(context, 0)));
+        pts[i].y = isolate->toInt32Value(JSValue(pt->Get(context, 1)));
     }
 
     return 0;
@@ -1236,11 +1237,11 @@ result_t Image::flip(int32_t dir, AsyncEvent* ac)
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
 
-    if (dir == gd_base::_HORIZONTAL)
+    if (dir == gd_base::C_HORIZONTAL)
         gdImageFlipHorizontal(m_image);
-    else if (dir == gd_base::_VERTICAL)
+    else if (dir == gd_base::C_VERTICAL)
         gdImageFlipVertical(m_image);
-    else if (dir == gd_base::_BOTH)
+    else if (dir == gd_base::C_BOTH)
         gdImageFlipBoth(m_image);
     else
         return CHECK_ERROR(CALL_E_INVALIDARG);
@@ -1250,7 +1251,7 @@ result_t Image::flip(int32_t dir, AsyncEvent* ac)
 
 result_t Image::rotate(int32_t dir)
 {
-    if (dir != gd_base::_LEFT && dir != gd_base::_RIGHT)
+    if (dir != gd_base::C_LEFT && dir != gd_base::C_RIGHT)
         return CHECK_ERROR(CALL_E_INVALIDARG);
 
     int32_t sx = gdImageSX(m_image);
@@ -1267,7 +1268,7 @@ result_t Image::rotate(int32_t dir)
 
     gdImageColorTransparent(newImage, gdImageGetTransparent(m_image));
 
-    if (dir == gd_base::_LEFT) {
+    if (dir == gd_base::C_LEFT) {
         for (i = 0; i < sx; i++)
             for (j = 0; j < sy; j++)
                 gdImageSetPixel(newImage, j, sx - i - 1,
@@ -1306,14 +1307,14 @@ result_t Image::convert(int32_t color, AsyncEvent* ac)
     if (ac->isSync())
         return CHECK_ERROR(CALL_E_NOSYNC);
 
-    if (color != gd_base::_TRUECOLOR && color != gd_base::_PALETTE)
+    if (color != gd_base::C_TRUECOLOR && color != gd_base::C_PALETTE)
         return CHECK_ERROR(CALL_E_INVALIDARG);
 
-    if (color == gd_base::_TRUECOLOR && !gdImageTrueColor(m_image)) {
+    if (color == gd_base::C_TRUECOLOR && !gdImageTrueColor(m_image)) {
         setExtMemory(-1);
         gdImagePaletteToTrueColor(m_image);
         setExtMemory();
-    } else if (color == gd_base::_PALETTE && gdImageTrueColor(m_image)) {
+    } else if (color == gd_base::C_PALETTE && gdImageTrueColor(m_image)) {
         setExtMemory(-1);
         gdImageTrueColorToPalette(m_image, 1, 256);
         setExtMemory();
@@ -1457,41 +1458,41 @@ result_t Image::filter(int32_t filterType, double arg1, double arg2, double arg3
         return CHECK_ERROR(CALL_E_NOSYNC);
 
     switch (filterType) {
-    case gd_base::_MEAN_REMOVAL:
+    case gd_base::C_MEAN_REMOVAL:
         gdImageMeanRemoval(m_image);
         break;
-    case gd_base::_EDGEDETECT:
+    case gd_base::C_EDGEDETECT:
         gdImageEdgeDetectQuick(m_image);
         break;
-    case gd_base::_EMBOSS:
+    case gd_base::C_EMBOSS:
         gdImageEmboss(m_image);
         break;
-    case gd_base::_SELECTIVE_BLUR:
+    case gd_base::C_SELECTIVE_BLUR:
         gdImageSelectiveBlur(m_image);
         break;
-    case gd_base::_GAUSSIAN_BLUR:
+    case gd_base::C_GAUSSIAN_BLUR:
         gdImageGaussianBlur(m_image);
         break;
-    case gd_base::_NEGATE:
+    case gd_base::C_NEGATE:
         gdImageNegate(m_image);
         break;
-    case gd_base::_GRAYSCALE:
+    case gd_base::C_GRAYSCALE:
         gdImageGrayScale(m_image);
         break;
-    case gd_base::_SMOOTH:
+    case gd_base::C_SMOOTH:
         gdImageSmooth(m_image, (float)arg1);
         break;
-    case gd_base::_BRIGHTNESS:
+    case gd_base::C_BRIGHTNESS:
         if (arg1 < -255 || arg1 > 255)
             return CHECK_ERROR(CALL_E_INVALIDARG);
         gdImageBrightness(m_image, (int)arg1);
         break;
-    case gd_base::_CONTRAST:
+    case gd_base::C_CONTRAST:
         if (arg1 < 0 || arg1 > 100)
             return CHECK_ERROR(CALL_E_INVALIDARG);
         gdImageContrast(m_image, (int)arg1);
         break;
-    case gd_base::_COLORIZE:
+    case gd_base::C_COLORIZE:
         if (arg1 < 0 || arg2 < 0 || arg3 < 0 || arg4 < 0 || arg1 > 255 || arg2 > 255 || arg3 > 255 || arg4 > 127)
             return CHECK_ERROR(CALL_E_INVALIDARG);
         gdImageColor(m_image, (int)arg1, (int)arg2, (int)arg3, (int)arg4);
@@ -1514,8 +1515,9 @@ result_t Image::affine(v8::Local<v8::Array> affine, int32_t x, int32_t y, int32_
         ac->m_ctx.resize(6);
 
         Isolate* isolate = Isolate::current();
+        v8::Local<v8::Context> context = isolate->context();
         for (int32_t i = 0; i < 6; i++)
-            ac->m_ctx[i] = isolate->toNumber(JSValue(affine->Get(i)));
+            ac->m_ctx[i] = isolate->toNumber(JSValue(affine->Get(context, i)));
 
         return CHECK_ERROR(CALL_E_NOSYNC);
     }

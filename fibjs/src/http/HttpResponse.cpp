@@ -287,11 +287,12 @@ public:
 result_t http_base::get_STATUS_CODES(v8::Local<v8::Array>& retVal)
 {
     Isolate* isolate = Isolate::current();
+    v8::Local<v8::Context> context = isolate->context();
     int32_t i;
 
     retVal = v8::Array::New(isolate->m_isolate);
     for (i = 0; i < RESPONSE_CODES; i++)
-        retVal->Set(atoi(status_lines[i]), isolate->NewString(status_lines[i] + 5));
+        retVal->Set(context, atoi(status_lines[i]), isolate->NewString(status_lines[i] + 5));
 
     return 0;
 }
@@ -304,7 +305,7 @@ result_t HttpResponse::sendTo(Stream_base* stm, AsyncEvent* ac)
     if (m_cookies) {
         int32_t len, i;
 
-        m_cookies->get_length(len);
+        len = m_cookies->length();
 
         for (i = 0; i < len; i++) {
             Variant v;
@@ -467,7 +468,7 @@ result_t HttpResponse::get_cookies(obj_ptr<NArray>& retVal)
         allHeader("Set-Cookie", headers);
         removeHeader("Set-Cookie");
 
-        headers->get_length(len);
+        len = headers->length();
 
         for (i = 0; i < len; i++) {
             Variant v;
@@ -524,7 +525,7 @@ result_t HttpResponse::sendHeader(Stream_base* stm, AsyncEvent* ac)
     if (m_cookies) {
         int32_t len, i;
 
-        m_cookies->get_length(len);
+        len = m_cookies->length();
 
         for (i = 0; i < len; i++) {
             Variant v;

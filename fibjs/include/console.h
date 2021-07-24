@@ -5,8 +5,7 @@
  *      Author: lion
  */
 
-#ifndef _fj_CONSOLE_H
-#define _fj_CONSOLE_H
+#pragma once
 
 #include "utils.h"
 #include "TextColor.h"
@@ -70,7 +69,7 @@ public:
     {
         int32_t i;
 
-        for (i = 0; i < console_base::_NOTSET; i++)
+        for (i = 0; i < console_base::C_NOTSET; i++)
             m_levels[i] = true;
     }
 
@@ -85,26 +84,27 @@ public:
         } else if (hr < 0)
             return hr;
         else {
-            for (i = 0; i < console_base::_NOTSET; i++)
+            for (i = 0; i < console_base::C_NOTSET; i++)
                 m_levels[i] = false;
 
             int32_t sz = levels->Length();
+            v8::Local<v8::Context> context = levels->CreationContext();
 
             for (i = 0; i < sz; i++) {
-                JSValue l = levels->Get(i);
+                JSValue l = levels->Get(context, i);
                 int32_t num;
 
                 hr = GetArgumentValue(l, num);
                 if (hr < 0)
                     return CHECK_ERROR(hr);
 
-                if (num >= 0 && num < console_base::_NOTSET)
+                if (num >= 0 && num < console_base::C_NOTSET)
                     m_levels[num] = true;
                 else
                     return CHECK_ERROR(Runtime::setError("console: too many logger."));
             }
 
-            m_levels[console_base::_PRINT] = true;
+            m_levels[console_base::C_PRINT] = true;
         }
 
         return 0;
@@ -170,7 +170,7 @@ public:
 
     void log(int32_t priority, exlib::string& msg)
     {
-        if (priority >= 0 && priority < console_base::_NOTSET && m_levels[priority])
+        if (priority >= 0 && priority < console_base::C_NOTSET && m_levels[priority])
             putLog(priority, msg);
     }
 
@@ -199,7 +199,7 @@ public:
 
     static exlib::string warn()
     {
-        return COLOR_LIGHTYELLOW;
+        return COLOR_YELLOW;
     }
 
     static exlib::string error()
@@ -228,32 +228,13 @@ private:
     bool m_bWorking;
     bool m_bStop;
     exlib::spinlock m_lock;
-    bool m_levels[console_base::_NOTSET];
+    bool m_levels[console_base::C_NOTSET];
 };
 
 class std_logger : public logger {
 public:
     virtual result_t write(AsyncEvent* ac);
-    static void out(exlib::string& txt);
-};
-
-class stream_logger : public logger {
-public:
-    stream_logger(Stream_base* out)
-        : m_out(out)
-    {
-    }
-
-public:
-    virtual result_t write(AsyncEvent* ac);
-
-    void close()
-    {
-        m_out->ac_close();
-    }
-
-private:
-    obj_ptr<Stream_base> m_out;
+    static void out(exlib::string& txt, bool is_error = false);
 };
 
 class file_logger : public logger {
@@ -303,5 +284,3 @@ public:
 
 #endif
 }
-
-#endif // _fj_CONSOLE_H

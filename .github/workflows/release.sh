@@ -8,26 +8,26 @@ DIST_DIRPATH="bin/${DIST_DIR}"
 echo "DIST_DIRPATH is $DIST_DIRPATH"
 
 if [[ $TARGET_OS_NAME == 'Linux' ]]; then # Linux
-  VIXJS_FILE=${DIST_DIRPATH}/vixjs
+  FIBJS_FILE=${DIST_DIRPATH}/fibjs
   INSTALLER_FILE=${DIST_DIRPATH}/installer.sh
-  XZ_FILE=${DIST_DIRPATH}/vixjs.xz
-  GZ_FILE=${DIST_DIRPATH}/vixjs.tar.gz
+  XZ_FILE=${DIST_DIRPATH}/fibjs.xz
+  GZ_FILE=${DIST_DIRPATH}/fibjs.tar.gz
 
-  cp ${VIXJS_FILE} ${RELEASE_TAG}/vixjs-${RELEASE_TAG}-linux-${DIST_ARCH}
+  cp ${FIBJS_FILE} ${RELEASE_TAG}/fibjs-${RELEASE_TAG}-linux-${DIST_ARCH}
   cp ${INSTALLER_FILE} ${RELEASE_TAG}/installer-${RELEASE_TAG}-linux-${DIST_ARCH}.sh
-  cp ${XZ_FILE} ${RELEASE_TAG}/vixjs-${RELEASE_TAG}-linux-${DIST_ARCH}.xz
-  cp ${GZ_FILE} ${RELEASE_TAG}/vixjs-${RELEASE_TAG}-linux-${DIST_ARCH}.tar.gz
+  cp ${XZ_FILE} ${RELEASE_TAG}/fibjs-${RELEASE_TAG}-linux-${DIST_ARCH}.xz
+  cp ${GZ_FILE} ${RELEASE_TAG}/fibjs-${RELEASE_TAG}-linux-${DIST_ARCH}.tar.gz
 
 elif [[ $TARGET_OS_NAME == 'Darwin' ]]; then # Darwin
-  VIXJS_FILE=${DIST_DIRPATH}/vixjs
+  FIBJS_FILE=${DIST_DIRPATH}/fibjs
   INSTALLER_FILE=${DIST_DIRPATH}/installer.sh
-  XZ_FILE=${DIST_DIRPATH}/vixjs.xz
-  GZ_FILE=${DIST_DIRPATH}/vixjs.tar.gz
+  XZ_FILE=${DIST_DIRPATH}/fibjs.xz
+  GZ_FILE=${DIST_DIRPATH}/fibjs.tar.gz
 
-  cp ${VIXJS_FILE} ${RELEASE_TAG}/vixjs-${RELEASE_TAG}-darwin-${DIST_ARCH}
+  cp ${FIBJS_FILE} ${RELEASE_TAG}/fibjs-${RELEASE_TAG}-darwin-${DIST_ARCH}
   cp ${INSTALLER_FILE} ${RELEASE_TAG}/installer-${RELEASE_TAG}-darwin-${DIST_ARCH}.sh
-  cp ${XZ_FILE} ${RELEASE_TAG}/vixjs-${RELEASE_TAG}-darwin-${DIST_ARCH}.xz
-  cp ${GZ_FILE} ${RELEASE_TAG}/vixjs-${RELEASE_TAG}-darwin-${DIST_ARCH}.tar.gz
+  cp ${XZ_FILE} ${RELEASE_TAG}/fibjs-${RELEASE_TAG}-darwin-${DIST_ARCH}.xz
+  cp ${GZ_FILE} ${RELEASE_TAG}/fibjs-${RELEASE_TAG}-darwin-${DIST_ARCH}.tar.gz
 
   if [[ $DIST_ARCH == 'x64' ]]; then
     echo "zip fullsrc..."

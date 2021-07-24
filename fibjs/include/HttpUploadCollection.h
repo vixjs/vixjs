@@ -5,11 +5,10 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/HttpCollection.h"
 #include "QuickArray.h"
-
-#ifndef HTTPUPLOADCOLLECTION_H_
-#define HTTPUPLOADCOLLECTION_H_
 
 namespace fibjs {
 
@@ -49,7 +48,7 @@ public:
     result_t all(exlib::string name, obj_ptr<NArray>& retVal)
     {
         obj_ptr<NArray> list = new NArray();
-        int32_t i;
+        size_t i;
 
         for (i = 0; i < m_count; i++) {
             pair& _pair = m_map[i];
@@ -65,7 +64,7 @@ public:
     result_t all(obj_ptr<NObject>& retVal)
     {
         obj_ptr<NObject> map = new NObject(true);
-        int32_t i;
+        size_t i;
 
         for (i = 0; i < m_count; i++) {
             pair& _pair = m_map[i];
@@ -79,8 +78,7 @@ public:
 private:
     typedef std::pair<exlib::string, VariantEx> pair;
     std::vector<pair> m_map;
-    int32_t m_count;
+    size_t m_count;
 };
 
 } /* namespace fibjs */
-#endif /* HTTPUPLOADCOLLECTION_H_ */

@@ -5,25 +5,24 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/XmlDocument.h"
 #include "XmlNodeImpl.h"
-
-#ifndef XMLDOCUMENT_H_
-#define XMLDOCUMENT_H_
 
 namespace fibjs {
 
 class XmlDocument : public XmlDocument_base, public XmlNodeImpl {
 public:
     XmlDocument(bool isXml)
-        : XmlNodeImpl(NULL, this, xml_base::_DOCUMENT_NODE)
+        : XmlNodeImpl(NULL, this, xml_base::C_DOCUMENT_NODE)
         , m_isXml(isXml)
         , m_standalone(-1)
     {
     }
 
     XmlDocument(const XmlDocument& from)
-        : XmlNodeImpl(NULL, this, xml_base::_DOCUMENT_NODE)
+        : XmlNodeImpl(NULL, this, xml_base::C_DOCUMENT_NODE)
         , m_isXml(from.m_isXml)
         , m_version(from.m_version)
         , m_encoding(from.m_encoding)
@@ -105,4 +104,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* XMLDOCUMENT_H_ */

@@ -5,11 +5,10 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/Digest.h"
 #include <mbedtls/mbedtls/md.h>
-
-#ifndef DIGEST_H_
-#define DIGEST_H_
 
 namespace fibjs {
 
@@ -23,7 +22,12 @@ public:
     // Digest_base
     virtual result_t update(Buffer_base* data, obj_ptr<Digest_base>& retVal);
     virtual result_t digest(exlib::string codec, v8::Local<v8::Value>& retVal);
+    virtual result_t sign(PKey_base* key, obj_ptr<Buffer_base>& retVal, AsyncEvent* ac);
+    virtual result_t verify(PKey_base* key, Buffer_base* sign, bool& retVal, AsyncEvent* ac);
     virtual result_t get_size(int32_t& retVal);
+
+private:
+    result_t digest(obj_ptr<Buffer_base>& retVal);
 
 private:
     mbedtls_md_context_t m_ctx;
@@ -32,4 +36,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* DIGEST_H_ */

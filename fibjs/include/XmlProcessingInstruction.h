@@ -5,25 +5,24 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include "ifs/XmlProcessingInstruction.h"
 #include "XmlNodeImpl.h"
-
-#ifndef XMLPROCESSINTINSTRUCTION_H_
-#define XMLPROCESSINTINSTRUCTION_H_
 
 namespace fibjs {
 
 class XmlProcessingInstruction : public XmlProcessingInstruction_base, public XmlNodeImpl {
 public:
     XmlProcessingInstruction(XmlDocument_base* document, exlib::string target, exlib::string data)
-        : XmlNodeImpl(document, this, xml_base::_PROCESSING_INSTRUCTION_NODE)
+        : XmlNodeImpl(document, this, xml_base::C_PROCESSING_INSTRUCTION_NODE)
         , m_target(target)
         , m_data(data)
     {
     }
 
     XmlProcessingInstruction(const XmlProcessingInstruction& from)
-        : XmlNodeImpl(from.m_document, this, xml_base::_PROCESSING_INSTRUCTION_NODE)
+        : XmlNodeImpl(from.m_document, this, xml_base::C_PROCESSING_INSTRUCTION_NODE)
         , m_target(from.m_target)
         , m_data(from.m_data)
     {
@@ -69,4 +68,3 @@ private:
 };
 
 } /* namespace fibjs */
-#endif /* XMLPROCESSINTINSTRUCTION_H_ */

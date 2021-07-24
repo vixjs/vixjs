@@ -183,14 +183,14 @@ result_t AsyncCallBack::syncFunc(AsyncCallBack* pThis)
 
         v8::Local<v8::Value> e = v8::Exception::Error(
             isolate->NewString(getResultMessage(pThis->m_v)));
-        isolate->toLocalObject(e)
-            ->Set(isolate->NewString("number"), v8::Int32::New(isolate->m_isolate, -pThis->m_v));
+        v8::Local<v8::Object>::Cast(e)
+            ->Set(isolate->context(), isolate->NewString("number"), v8::Int32::New(isolate->m_isolate, -pThis->m_v));
 
         args.resize(1);
         args[0] = e;
     }
 
-    func->Call(v8::Undefined(isolate->m_isolate), (int32_t)args.size(), args.data());
+    func->Call(func->CreationContext(), v8::Undefined(isolate->m_isolate), (int32_t)args.size(), args.data());
 
     delete pThis;
 

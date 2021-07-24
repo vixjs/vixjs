@@ -5,11 +5,10 @@
  *      Author: lion
  */
 
+#pragma once
+
 #include <exlib/include/utils.h>
 #include <atomic>
-
-#ifndef OBJ_PTR_H_
-#define OBJ_PTR_H_
 
 namespace fibjs {
 
@@ -68,7 +67,7 @@ public:
     virtual void Unref()
     {
         if (internalUnref() == 0)
-            delete this;
+            final_release(this);
     }
 
     weak_stub* get_stub()
@@ -83,6 +82,13 @@ public:
             delete pNew;
 
         return weak_;
+    }
+
+public:
+    static int32_t final_release(obj_base* pThis)
+    {
+        delete pThis;
+        return 0;
     }
 
 protected:
@@ -300,5 +306,3 @@ private:
     exlib::atomic_ptr<obj_base::weak_stub> p;
 };
 }
-
-#endif /* OBJ_PTR_H_ */
